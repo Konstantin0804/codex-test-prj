@@ -16,6 +16,12 @@ export interface SurfInvite {
   expires_at: string;
 }
 
+export interface FriendSummary {
+  id: number;
+  username: string;
+  telegram_username: string | null;
+}
+
 export interface SurfSession {
   id: number;
   group_id: number;
@@ -72,6 +78,8 @@ export interface SessionCreatePayload {
   level: SessionLevel;
   forecast_note: string;
   logistics_note: string;
+  invite_usernames?: string[];
+  invite_telegram_usernames?: string[];
 }
 
 export interface ReportCreatePayload {
@@ -83,6 +91,7 @@ export interface ReportCreatePayload {
 
 export interface SurfState {
   groups: SurfGroup[];
+  friends: FriendSummary[];
   selectedGroupId: number | null;
   sessions: SurfSession[];
   reportsBySession: Record<number, SessionReport[]>;
@@ -90,6 +99,7 @@ export interface SurfState {
   invitesByGroup: Record<number, SurfInvite | null>;
   inbox: InboxItem[];
   loadingGroups: boolean;
+  loadingFriends: boolean;
   loadingSessions: boolean;
   creatingGroup: boolean;
   joiningByCode: boolean;

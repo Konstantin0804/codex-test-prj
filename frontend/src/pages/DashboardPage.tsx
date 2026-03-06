@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { AuthPanel } from "../components/AuthPanel";
 import { AppHeader } from "../components/AppHeader";
@@ -13,6 +13,7 @@ import {
   createInvite,
   createReport,
   createSession,
+  fetchFriends,
   fetchInbox,
   fetchGroups,
   fetchReports,
@@ -28,14 +29,17 @@ import type { ReportCreatePayload, SessionCreatePayload } from "../features/surf
 export function DashboardPage() {
   const dispatch = useAppDispatch();
   const { token, username } = useAppSelector((state) => state.auth);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const {
     groups,
+    friends,
     selectedGroupId,
     sessions,
     reportsBySession,
     invitesByGroup,
     inbox,
     loadingGroups,
+    loadingFriends,
     loadingSessions,
     loadingInbox,
     creatingGroup,
@@ -54,6 +58,7 @@ export function DashboardPage() {
       return;
     }
     void dispatch(fetchGroups());
+    void dispatch(fetchFriends());
   }, [dispatch, token]);
 
   useEffect(() => {
@@ -74,6 +79,17 @@ export function DashboardPage() {
     return <AuthPanel />;
   }
 
+  const handleCopyInviteLink = async () => {
+    const baseUrl = `${window.location.origin}/`;
+    try {
+      await navigator.clipboard.writeText(baseUrl);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
+    window.setTimeout(() => setCopyState("idle"), 1800);
+  };
+
   const handleCreateGroup = async (name: string, description: string) => {
     await dispatch(createGroup({ name, description }));
   };
@@ -86,7 +102,22 @@ export function DashboardPage() {
     if (!selectedGroupId) {
       return;
     }
-    await dispatch(createSession({ groupId: selectedGroupId, payload }));
+    const { invite_usernames = [], invite_telegram_usernames = [], ...sessionPayload } = payload;
+    const created = await dispatch(createSession({ groupId: selectedGroupId, payload: sessionPayload }));
+    if (!createSession.fulfilled.match(created)) {
+      return;
+    }
+
+    const sessionId = created.payload.id;
+    for (const username of invite_usernames) {
+      await dispatch(sendSessionInvite({ sessionId, username }));
+    }
+    for (const telegram_username of invite_telegram_usernames) {
+      await dispatch(sendSessionInvite({ sessionId, telegram_username }));
+    }
+    if (invite_usernames.length > 0 || invite_telegram_usernames.length > 0) {
+      await dispatch(fetchInbox());
+    }
   };
 
   const handleRsvp = async (
@@ -136,9 +167,18 @@ export function DashboardPage() {
       <AppHeader />
       <div className="auth-strip">
         <span>Signed in as @{username}</span>
-        <button className="ghost" onClick={() => dispatch(logout())}>
-          Logout
-        </button>
+        <div className="chip-row">
+          <button className="ghost" onClick={() => void handleCopyInviteLink()}>
+            {copyState === "copied"
+              ? "Copied"
+              : copyState === "error"
+                ? "Copy failed"
+                : "Share invite link"}
+          </button>
+          <button className="ghost" onClick={() => dispatch(logout())}>
+            Logout
+          </button>
+        </div>
       </div>
       {error ? <p className="error">{error}</p> : null}
       <section className="surf-layout">
@@ -166,7 +206,12 @@ export function DashboardPage() {
             </article>
           ) : (
             <>
-              <SurfSessionComposer disabled={creatingSession} onSubmit={handleCreateSession} />
+              <SurfSessionComposer
+                disabled={creatingSession}
+                friends={friends}
+                loadingFriends={loadingFriends}
+                onSubmit={handleCreateSession}
+              />
               <SurfCalendar
                 sessions={sessions}
                 loading={loadingSessions}

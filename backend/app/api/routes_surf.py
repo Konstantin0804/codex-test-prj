@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db_dep
 from app.models.user import User
 from app.schemas.surf import (
+    FriendRead,
     GroupCreate,
     GroupRead,
     InboxItemRead,
@@ -27,6 +28,7 @@ from app.services.surf_service import (
     create_session_invite,
     create_session,
     join_by_code,
+    list_friends,
     list_inbox_items,
     list_groups,
     list_reports,
@@ -70,6 +72,18 @@ def get_groups(
             created_at=group.created_at,
         )
         for group, membership in records
+    ]
+
+
+@router.get("/friends", response_model=list[FriendRead])
+def get_friends(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[FriendRead]:
+    friends = list_friends(db, current_user)
+    return [
+        FriendRead(id=friend.id, username=friend.username, telegram_username=friend.telegram_username)
+        for friend in friends
     ]
 
 

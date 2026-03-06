@@ -20,6 +20,12 @@ class GroupRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class FriendRead(BaseModel):
+    id: int
+    username: str
+    telegram_username: str | None = None
+
+
 class InviteRead(BaseModel):
     code: str
     status: InviteStatus

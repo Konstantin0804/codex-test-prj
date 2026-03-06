@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
 from app.models.surf import (
@@ -123,6 +123,20 @@ def list_groups(db: Session, user: User) -> list[tuple[SurfGroup, GroupMembershi
         .order_by(SurfGroup.created_at.desc())
     )
     return list(db.execute(stmt).all())
+
+
+def list_friends(db: Session, user: User) -> list[User]:
+    own_memberships = aliased(GroupMembership)
+    friend_memberships = aliased(GroupMembership)
+    stmt = (
+        select(User)
+        .join(friend_memberships, friend_memberships.user_id == User.id)
+        .join(own_memberships, own_memberships.group_id == friend_memberships.group_id)
+        .where(own_memberships.user_id == user.id, User.id != user.id)
+        .distinct()
+        .order_by(User.username.asc())
+    )
+    return list(db.scalars(stmt).all())
 
 
 def create_invite(db: Session, group_id: int, user: User) -> GroupInvite:

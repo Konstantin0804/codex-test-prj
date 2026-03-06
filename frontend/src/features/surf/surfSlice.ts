@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "../../shared/api";
 import type {
+  FriendSummary,
   GroupCreatePayload,
   InboxItem,
   ReportCreatePayload,
@@ -15,6 +16,7 @@ import type {
 
 const initialState: SurfState = {
   groups: [],
+  friends: [],
   selectedGroupId: null,
   sessions: [],
   reportsBySession: {},
@@ -22,6 +24,7 @@ const initialState: SurfState = {
   invitesByGroup: {},
   inbox: [],
   loadingGroups: false,
+  loadingFriends: false,
   loadingSessions: false,
   creatingGroup: false,
   joiningByCode: false,
@@ -37,6 +40,11 @@ const initialState: SurfState = {
 
 export const fetchGroups = createAsyncThunk("surf/fetchGroups", async () => {
   const response = await api.get<SurfGroup[]>("/surf/groups");
+  return response.data;
+});
+
+export const fetchFriends = createAsyncThunk("surf/fetchFriends", async () => {
+  const response = await api.get<FriendSummary[]>("/surf/friends");
   return response.data;
 });
 
@@ -156,6 +164,17 @@ const surfSlice = createSlice({
       .addCase(fetchGroups.rejected, (state, action) => {
         state.loadingGroups = false;
         state.error = action.error.message ?? "Failed to load groups";
+      })
+      .addCase(fetchFriends.pending, (state) => {
+        state.loadingFriends = true;
+      })
+      .addCase(fetchFriends.fulfilled, (state, action) => {
+        state.loadingFriends = false;
+        state.friends = action.payload;
+      })
+      .addCase(fetchFriends.rejected, (state, action) => {
+        state.loadingFriends = false;
+        state.error = action.error.message ?? "Failed to load friends";
       })
       .addCase(createGroup.pending, (state) => {
         state.creatingGroup = true;

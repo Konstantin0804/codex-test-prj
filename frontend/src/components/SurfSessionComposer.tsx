@@ -1,8 +1,10 @@
 import { FormEvent, useState } from "react";
-import type { SessionLevel } from "../features/surf/types";
+import type { FriendSummary, SessionLevel } from "../features/surf/types";
 
 interface Props {
   disabled: boolean;
+  friends: FriendSummary[];
+  loadingFriends: boolean;
   onSubmit: (payload: {
     spot_name: string;
     session_date: string;
@@ -10,16 +12,33 @@ interface Props {
     level: SessionLevel;
     forecast_note: string;
     logistics_note: string;
+    invite_usernames?: string[];
+    invite_telegram_usernames?: string[];
   }) => Promise<void>;
 }
 
-export function SurfSessionComposer({ disabled, onSubmit }: Props) {
+export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmit }: Props) {
   const [spotName, setSpotName] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [meetingTime, setMeetingTime] = useState("06:30");
   const [level, setLevel] = useState<SessionLevel>("mixed");
   const [forecastNote, setForecastNote] = useState("");
   const [logisticsNote, setLogisticsNote] = useState("");
+  const [selectedFriendUsernames, setSelectedFriendUsernames] = useState<string[]>([]);
+  const [inviteUsersRaw, setInviteUsersRaw] = useState("");
+  const [inviteTelegramsRaw, setInviteTelegramsRaw] = useState("");
+
+  const typedUsernames = inviteUsersRaw
+    .split(",")
+    .map((value) => value.trim().replace(/^@/, "").toLowerCase())
+    .filter(Boolean);
+  const typedTelegrams = inviteTelegramsRaw
+    .split(",")
+    .map((value) => value.trim().replace(/^@/, "").toLowerCase())
+    .filter(Boolean);
+  const finalInviteUsernames = Array.from(new Set([...typedUsernames, ...selectedFriendUsernames]));
+  const previewUsers = finalInviteUsernames.map((username) => `@${username}`);
+  const previewTelegrams = typedTelegrams.map((username) => `@${username}`);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -32,11 +51,22 @@ export function SurfSessionComposer({ disabled, onSubmit }: Props) {
       meeting_time: meetingTime || null,
       level,
       forecast_note: forecastNote,
-      logistics_note: logisticsNote
+      logistics_note: logisticsNote,
+      invite_usernames: finalInviteUsernames,
+      invite_telegram_usernames: typedTelegrams
     });
     setSpotName("");
     setForecastNote("");
     setLogisticsNote("");
+    setSelectedFriendUsernames([]);
+    setInviteUsersRaw("");
+    setInviteTelegramsRaw("");
+  };
+
+  const toggleFriend = (username: string) => {
+    setSelectedFriendUsernames((prev) =>
+      prev.includes(username) ? prev.filter((item) => item !== username) : [...prev, username]
+    );
   };
 
   return (
@@ -89,6 +119,62 @@ export function SurfSessionComposer({ disabled, onSubmit }: Props) {
           placeholder="Meet at north parking, 2 boards in car"
         />
       </label>
+      <div className="row-2">
+        <label>
+          Invite users (@username, comma separated)
+          <input
+            value={inviteUsersRaw}
+            onChange={(event) => setInviteUsersRaw(event.target.value)}
+            placeholder="@kostia, @maria"
+          />
+        </label>
+        <label>
+          Invite by Telegram (@handle, comma separated)
+          <input
+            value={inviteTelegramsRaw}
+            onChange={(event) => setInviteTelegramsRaw(event.target.value)}
+            placeholder="@friend1, @friend2"
+          />
+        </label>
+      </div>
+      <div className="friend-picker">
+        <p className="tiny">Invite from your friends</p>
+        {loadingFriends ? <p className="tiny">Loading friends...</p> : null}
+        <div className="chip-row">
+          {friends.length === 0 && !loadingFriends ? (
+            <p className="tiny">No friends yet. Join or create groups first.</p>
+          ) : null}
+          {friends.map((friend) => (
+            <button
+              key={friend.id}
+              type="button"
+              className={selectedFriendUsernames.includes(friend.username) ? "active-chip" : "ghost"}
+              onClick={() => toggleFriend(friend.username)}
+            >
+              @{friend.username}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="invite-preview">
+        <p className="tiny">Invite preview</p>
+        {previewUsers.length === 0 && previewTelegrams.length === 0 ? (
+          <p className="tiny">No invite recipients selected yet.</p>
+        ) : (
+          <div className="chip-row">
+            {previewUsers.map((user) => (
+              <span key={user} className="preview-chip">
+                {user}
+              </span>
+            ))}
+            {previewTelegrams.map((tg) => (
+              <span key={tg} className="preview-chip">
+                tg:{tg}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       <button disabled={disabled} type="submit">
         {disabled ? "Saving..." : "Add to calendar"}
       </button>

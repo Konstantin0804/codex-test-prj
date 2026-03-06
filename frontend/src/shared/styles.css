@@ -224,6 +224,20 @@ body {
   gap: 0.5rem;
 }
 
+.friend-picker,
+.invite-preview {
+  border-top: 1px dashed var(--border);
+  padding-top: 0.55rem;
+}
+
+.preview-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.82rem;
+  background: #fff7ed;
+}
+
 .invite-row {
   margin-top: 0.55rem;
   display: grid;
@@ -353,7 +367,18 @@ textarea {
   align-items: end;
 }
 
+.row-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: end;
+}
+
 .row-3 > label {
+  min-width: 0;
+}
+
+.row-2 > label {
   min-width: 0;
 }
 
@@ -525,6 +550,10 @@ button.ghost {
   }
 
   .row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .row-2 {
     grid-template-columns: 1fr;
   }
 }
