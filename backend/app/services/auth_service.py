@@ -25,15 +25,53 @@ def create_user(
     telegram_username: str,
     invite_token: str | None = None,
 ) -> User:
-    existing = db.scalar(select(User).where(User.username == username))
-    if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
-
+    username_norm = username.strip().lower()
     tg_norm = normalize_telegram_username(telegram_username)
+    existing = db.scalar(select(User).where(User.username == username_norm))
     existing_tg = db.scalar(select(User).where(User.telegram_username == tg_norm))
+
+    # Allow retrying registration for accounts that are still pending Telegram verification.
+    if existing:
+        if existing.is_telegram_verified:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
+
+        if existing_tg and existing_tg.id != existing.id:
+            if existing_tg.is_telegram_verified:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail="Telegram username already used"
+                )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Telegram username already has a pending registration",
+            )
+
+        verify_token = secrets.token_urlsafe(24).replace("-", "").replace("_", "")[:32]
+        chat_link = db.scalar(
+            select(TelegramChatLink).where(TelegramChatLink.telegram_username == tg_norm)
+        )
+        existing.password_hash = hash_password(password)
+        existing.telegram_username = tg_norm
+        existing.telegram_chat_id = chat_link.chat_id if chat_link else existing.telegram_chat_id
+        existing.is_telegram_verified = False
+        existing.telegram_verify_token = verify_token
+        db.add(existing)
+        db.commit()
+        db.refresh(existing)
+        attach_registration_invite(db, existing, invite_token)
+        db.refresh(existing)
+        return existing
+
     if existing_tg:
+        if existing_tg.is_telegram_verified:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Telegram username already used"
+            )
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Telegram username already used"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Telegram username already has a pending registration. "
+                "Use the same username to retry or complete verification in Telegram."
+            ),
         )
 
     chat_link = db.scalar(
@@ -42,7 +80,7 @@ def create_user(
     verify_token = secrets.token_urlsafe(24).replace("-", "").replace("_", "")[:32]
 
     user = User(
-        username=username,
+        username=username_norm,
         telegram_username=tg_norm,
         telegram_chat_id=chat_link.chat_id if chat_link else None,
         is_telegram_verified=False,
@@ -85,9 +123,12 @@ def trigger_telegram_verification(user: User) -> tuple[str, str | None]:
             "pending_telegram_verification",
             "Verification message sent to your Telegram. Confirm in bot and then login.",
         )
+    fallback = "Open Telegram bot, press Start, then return and repeat registration/login."
+    if settings.telegram_bot_username:
+        fallback = f"Open @{settings.telegram_bot_username}, press Start, then return and login."
     return (
         "pending_telegram_verification",
-        "Open Telegram bot link, press Start, then confirm registration.",
+        fallback,
     )
 
 
