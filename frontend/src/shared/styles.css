@@ -250,6 +250,10 @@ body {
   margin: 0;
 }
 
+.error-text {
+  color: #b91c1c;
+}
+
 .empty-block {
   padding: 1rem;
 }

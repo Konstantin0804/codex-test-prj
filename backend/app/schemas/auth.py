@@ -24,6 +24,11 @@ class RegisterResponse(BaseModel):
     bot_link: str | None = None
 
 
+class UsernameCheckResponse(BaseModel):
+    username: str
+    available: bool
+
+
 class UserRead(BaseModel):
     id: int
     username: str
