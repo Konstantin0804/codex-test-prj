@@ -39,6 +39,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db_dep)) -> Reg
         payload.username.strip().lower(),
         payload.password,
         payload.telegram_username,
+        payload.invite_token,
     )
     status_value, message = trigger_telegram_verification(user)
     return RegisterResponse(status=status_value, message=message, bot_link=get_bot_link(user))

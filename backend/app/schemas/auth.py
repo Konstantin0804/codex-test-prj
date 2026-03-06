@@ -5,6 +5,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
     password: str = Field(min_length=8, max_length=128)
     telegram_username: str = Field(min_length=3, max_length=64)
+    invite_token: str | None = None
 
 
 class LoginRequest(BaseModel):

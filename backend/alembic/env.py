@@ -14,6 +14,8 @@ from app.db.base import Base
 from app.models.surf import (  # noqa: F401
     GroupInvite,
     GroupMembership,
+    InboxItem,
+    SessionInvite,
     SessionReport,
     SessionRSVP,
     SurfGroup,

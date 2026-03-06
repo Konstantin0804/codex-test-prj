@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.telegram import TelegramChatLink
 from app.models.user import User
+from app.services.surf_service import attach_registration_invite
 from app.services.telegram_service import (
     bot_start_link,
     normalize_telegram_username,
@@ -17,7 +18,13 @@ from app.services.telegram_service import (
 settings = get_settings()
 
 
-def create_user(db: Session, username: str, password: str, telegram_username: str) -> User:
+def create_user(
+    db: Session,
+    username: str,
+    password: str,
+    telegram_username: str,
+    invite_token: str | None = None,
+) -> User:
     existing = db.scalar(select(User).where(User.username == username))
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
@@ -44,6 +51,8 @@ def create_user(db: Session, username: str, password: str, telegram_username: st
     )
     db.add(user)
     db.commit()
+    db.refresh(user)
+    attach_registration_invite(db, user, invite_token)
     db.refresh(user)
     return user
 

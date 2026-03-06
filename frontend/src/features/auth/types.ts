@@ -20,6 +20,7 @@ export interface LoginPayload {
 
 export interface RegisterPayload extends LoginPayload {
   telegram_username: string;
+  invite_token?: string;
 }
 
 export interface RegisterResponse {

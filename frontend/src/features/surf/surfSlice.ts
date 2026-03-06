@@ -2,7 +2,9 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "../../shared/api";
 import type {
   GroupCreatePayload,
+  InboxItem,
   ReportCreatePayload,
+  SessionInvite,
   SessionCreatePayload,
   SessionReport,
   SurfGroup,
@@ -16,13 +18,18 @@ const initialState: SurfState = {
   selectedGroupId: null,
   sessions: [],
   reportsBySession: {},
+  invitesBySession: {},
   invitesByGroup: {},
+  inbox: [],
   loadingGroups: false,
   loadingSessions: false,
   creatingGroup: false,
   joiningByCode: false,
   creatingSession: false,
   creatingInvite: false,
+  sendingSessionInvite: false,
+  acceptingInviteIds: [],
+  loadingInbox: false,
   rsvpLoadingIds: [],
   reportLoadingIds: [],
   error: null
@@ -63,6 +70,40 @@ export const createSession = createAsyncThunk(
     return response.data;
   }
 );
+
+export const sendSessionInvite = createAsyncThunk(
+  "surf/sendSessionInvite",
+  async ({
+    sessionId,
+    username,
+    telegram_username
+  }: {
+    sessionId: number;
+    username?: string;
+    telegram_username?: string;
+  }) => {
+    const response = await api.post<SessionInvite>(`/surf/sessions/${sessionId}/invite`, {
+      username,
+      telegram_username
+    });
+    return response.data;
+  }
+);
+
+export const fetchInbox = createAsyncThunk("surf/fetchInbox", async () => {
+  const response = await api.get<InboxItem[]>("/surf/inbox");
+  return response.data;
+});
+
+export const markInboxRead = createAsyncThunk("surf/markInboxRead", async (itemId: number) => {
+  const response = await api.patch<InboxItem>(`/surf/inbox/${itemId}/read`);
+  return response.data;
+});
+
+export const acceptInvite = createAsyncThunk("surf/acceptInvite", async (inviteId: number) => {
+  const response = await api.post<SessionInvite>(`/surf/invites/${inviteId}/accept`);
+  return response.data;
+});
 
 export const setRsvp = createAsyncThunk(
   "surf/setRsvp",
@@ -152,6 +193,52 @@ const surfSlice = createSlice({
       .addCase(createInvite.rejected, (state, action) => {
         state.creatingInvite = false;
         state.error = action.error.message ?? "Failed to create invite";
+      })
+      .addCase(sendSessionInvite.pending, (state) => {
+        state.sendingSessionInvite = true;
+      })
+      .addCase(sendSessionInvite.fulfilled, (state, action) => {
+        state.sendingSessionInvite = false;
+        state.invitesBySession[action.payload.session_id] = [
+          action.payload,
+          ...(state.invitesBySession[action.payload.session_id] ?? [])
+        ];
+      })
+      .addCase(sendSessionInvite.rejected, (state, action) => {
+        state.sendingSessionInvite = false;
+        state.error = action.error.message ?? "Failed to send session invite";
+      })
+      .addCase(fetchInbox.pending, (state) => {
+        state.loadingInbox = true;
+      })
+      .addCase(fetchInbox.fulfilled, (state, action) => {
+        state.loadingInbox = false;
+        state.inbox = action.payload;
+      })
+      .addCase(fetchInbox.rejected, (state, action) => {
+        state.loadingInbox = false;
+        state.error = action.error.message ?? "Failed to load inbox";
+      })
+      .addCase(markInboxRead.fulfilled, (state, action) => {
+        const index = state.inbox.findIndex((item) => item.id === action.payload.id);
+        if (index >= 0) {
+          state.inbox[index] = action.payload;
+        }
+      })
+      .addCase(acceptInvite.pending, (state, action) => {
+        state.acceptingInviteIds.push(action.meta.arg);
+      })
+      .addCase(acceptInvite.fulfilled, (state, action) => {
+        state.acceptingInviteIds = state.acceptingInviteIds.filter((id) => id !== action.payload.id);
+        state.inbox = state.inbox.map((item) =>
+          item.related_invite_id === action.payload.id
+            ? { ...item, is_read: true, title: `${item.title} (accepted)` }
+            : item
+        );
+      })
+      .addCase(acceptInvite.rejected, (state, action) => {
+        state.acceptingInviteIds = state.acceptingInviteIds.filter((id) => id !== action.meta.arg);
+        state.error = action.error.message ?? "Failed to accept invite";
       })
       .addCase(fetchSessions.pending, (state) => {
         state.loadingSessions = true;

@@ -41,6 +41,13 @@ class RSVPStatus(str, enum.Enum):
     not_going = "not_going"
 
 
+class SessionInviteStatus(str, enum.Enum):
+    pending = "pending"
+    pending_verification = "pending_verification"
+    accepted = "accepted"
+    declined = "declined"
+
+
 class SurfGroup(Base):
     __tablename__ = "surf_groups"
 
@@ -113,4 +120,36 @@ class SessionReport(Base):
     crowd_score: Mapped[int] = mapped_column(Integer, nullable=False)
     wind_score: Mapped[int] = mapped_column(Integer, nullable=False)
     note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class SessionInvite(Base):
+    __tablename__ = "session_invites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("surf_sessions.id"), nullable=False, index=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("surf_groups.id"), nullable=False, index=True)
+    invited_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    invited_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    invited_telegram_username: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    invite_token: Mapped[str | None] = mapped_column(String(48), nullable=True, unique=True, index=True)
+    status: Mapped[SessionInviteStatus] = mapped_column(
+        Enum(SessionInviteStatus), default=SessionInviteStatus.pending, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class InboxItem(Base):
+    __tablename__ = "inbox_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    item_type: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(180), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    related_invite_id: Mapped[int | None] = mapped_column(
+        ForeignKey("session_invites.id"), nullable=True, index=True
+    )
+    is_read: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

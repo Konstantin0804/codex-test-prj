@@ -2,20 +2,25 @@ import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { AuthPanel } from "../components/AuthPanel";
 import { AppHeader } from "../components/AppHeader";
+import { InboxPanel } from "../components/InboxPanel";
 import { SurfCalendar } from "../components/SurfCalendar";
 import { SurfGroupPanel } from "../components/SurfGroupPanel";
 import { SurfSessionComposer } from "../components/SurfSessionComposer";
 import { logout } from "../features/auth/authSlice";
 import {
+  acceptInvite,
   createGroup,
   createInvite,
   createReport,
   createSession,
+  fetchInbox,
   fetchGroups,
   fetchReports,
   fetchSessions,
   joinByInvite,
+  markInboxRead,
   selectGroup,
+  sendSessionInvite,
   setRsvp
 } from "../features/surf/surfSlice";
 import type { ReportCreatePayload, SessionCreatePayload } from "../features/surf/types";
@@ -29,12 +34,16 @@ export function DashboardPage() {
     sessions,
     reportsBySession,
     invitesByGroup,
+    inbox,
     loadingGroups,
     loadingSessions,
+    loadingInbox,
     creatingGroup,
     joiningByCode,
     creatingSession,
     creatingInvite,
+    sendingSessionInvite,
+    acceptingInviteIds,
     rsvpLoadingIds,
     reportLoadingIds,
     error
@@ -53,6 +62,13 @@ export function DashboardPage() {
     }
     void dispatch(fetchSessions(selectedGroupId));
   }, [dispatch, selectedGroupId]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    void dispatch(fetchInbox());
+  }, [dispatch, token]);
 
   if (!token) {
     return <AuthPanel />;
@@ -86,6 +102,33 @@ export function DashboardPage() {
 
   const handleLoadReports = async (sessionId: number) => {
     await dispatch(fetchReports(sessionId));
+  };
+
+  const handleSendInvite = async (
+    sessionId: number,
+    username?: string,
+    telegramUsername?: string
+  ) => {
+    await dispatch(
+      sendSessionInvite({
+        sessionId,
+        username,
+        telegram_username: telegramUsername
+      })
+    );
+    await dispatch(fetchInbox());
+  };
+
+  const handleAcceptInvite = async (inviteId: number) => {
+    await dispatch(acceptInvite(inviteId));
+    if (selectedGroupId) {
+      await dispatch(fetchSessions(selectedGroupId));
+    }
+    await dispatch(fetchInbox());
+  };
+
+  const handleMarkInboxRead = async (itemId: number) => {
+    await dispatch(markInboxRead(itemId));
   };
 
   return (
@@ -130,9 +173,21 @@ export function DashboardPage() {
                 rsvpLoadingIds={rsvpLoadingIds}
                 reportLoadingIds={reportLoadingIds}
                 reportsBySession={reportsBySession}
+                sendingInvite={sendingSessionInvite}
+                onSendInvite={handleSendInvite}
                 onRsvp={handleRsvp}
                 onCreateReport={handleCreateReport}
                 onLoadReports={handleLoadReports}
+              />
+              <InboxPanel
+                items={inbox}
+                loading={loadingInbox}
+                acceptingInviteIds={acceptingInviteIds}
+                onRefresh={async () => {
+                  await dispatch(fetchInbox());
+                }}
+                onAcceptInvite={handleAcceptInvite}
+                onMarkRead={handleMarkInboxRead}
               />
             </>
           )}

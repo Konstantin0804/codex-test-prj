@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import axios from "axios";
 import { api, clearAuthToken, setAuthToken } from "../../shared/api";
 import type {
   AuthResponse,
@@ -26,16 +27,36 @@ const persistAuth = (payload: AuthResponse) => {
   setAuthToken(payload.access_token);
 };
 
-export const login = createAsyncThunk("auth/login", async (payload: LoginPayload) => {
-  const response = await api.post<AuthResponse>("/auth/login", payload);
-  persistAuth(response.data);
-  return response.data;
-});
+export const login = createAsyncThunk(
+  "auth/login",
+  async (payload: LoginPayload, { rejectWithValue }) => {
+    try {
+      const response = await api.post<AuthResponse>("/auth/login", payload);
+      persistAuth(response.data);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return rejectWithValue(error.response?.data?.detail ?? "Login failed");
+      }
+      return rejectWithValue("Login failed");
+    }
+  }
+);
 
-export const register = createAsyncThunk("auth/register", async (payload: RegisterPayload) => {
-  const response = await api.post<RegisterResponse>("/auth/register", payload);
-  return response.data;
-});
+export const register = createAsyncThunk(
+  "auth/register",
+  async (payload: RegisterPayload, { rejectWithValue }) => {
+    try {
+      const response = await api.post<RegisterResponse>("/auth/register", payload);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return rejectWithValue(error.response?.data?.detail ?? "Registration failed");
+      }
+      return rejectWithValue("Registration failed");
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: "auth",
@@ -71,7 +92,7 @@ const authSlice = createSlice({
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message ?? "Login failed";
+        state.error = (action.payload as string) ?? action.error.message ?? "Login failed";
       })
       .addCase(register.pending, (state) => {
         state.loading = true;
@@ -86,7 +107,7 @@ const authSlice = createSlice({
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message ?? "Registration failed";
+        state.error = (action.payload as string) ?? action.error.message ?? "Registration failed";
       });
   }
 });

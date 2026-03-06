@@ -8,6 +8,7 @@ export function AuthPanel() {
   const { loading, error, registerMessage, registerBotLink } = useAppSelector(
     (state) => state.auth
   );
+  const inviteToken = new URLSearchParams(window.location.search).get("invite") ?? undefined;
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -52,8 +53,17 @@ export function AuthPanel() {
       await dispatch(login({ username, password }));
       return;
     }
-    await dispatch(register({ username, password, telegram_username: telegramUsername }));
-    setMode("login");
+    const result = await dispatch(
+      register({
+        username,
+        password,
+        telegram_username: telegramUsername,
+        invite_token: inviteToken
+      })
+    );
+    if (register.fulfilled.match(result)) {
+      setMode("login");
+    }
   };
 
   const loginValid = username.trim().length >= 3 && password.length >= 8;

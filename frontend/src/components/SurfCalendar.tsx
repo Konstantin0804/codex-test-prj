@@ -7,6 +7,8 @@ interface Props {
   rsvpLoadingIds: number[];
   reportLoadingIds: number[];
   reportsBySession: Record<number, SessionReport[]>;
+  sendingInvite: boolean;
+  onSendInvite: (sessionId: number, username?: string, telegramUsername?: string) => Promise<void>;
   onRsvp: (sessionId: number, status: "going" | "maybe" | "not_going") => Promise<void>;
   onCreateReport: (
     sessionId: number,
@@ -21,12 +23,16 @@ export function SurfCalendar({
   rsvpLoadingIds,
   reportLoadingIds,
   reportsBySession,
+  sendingInvite,
+  onSendInvite,
   onRsvp,
   onCreateReport,
   onLoadReports
 }: Props) {
   const [openReportFor, setOpenReportFor] = useState<number | null>(null);
   const [formState, setFormState] = useState({ wave_score: 7, crowd_score: 6, wind_score: 7, note: "" });
+  const [inviteUsername, setInviteUsername] = useState("");
+  const [inviteTelegram, setInviteTelegram] = useState("");
 
   const grouped = useMemo(() => {
     const map: Record<string, SurfSession[]> = {};
@@ -93,6 +99,33 @@ export function SurfCalendar({
                     }}
                   >
                     Reports
+                  </button>
+                </div>
+                <div className="invite-row">
+                  <input
+                    placeholder="Invite by username"
+                    value={inviteUsername}
+                    onChange={(event) => setInviteUsername(event.target.value)}
+                  />
+                  <input
+                    placeholder="or @telegram"
+                    value={inviteTelegram}
+                    onChange={(event) => setInviteTelegram(event.target.value)}
+                  />
+                  <button
+                    className="ghost"
+                    disabled={sendingInvite || (!inviteUsername.trim() && !inviteTelegram.trim())}
+                    onClick={async () => {
+                      await onSendInvite(
+                        session.id,
+                        inviteUsername.trim() || undefined,
+                        inviteTelegram.trim() || undefined
+                      );
+                      setInviteUsername("");
+                      setInviteTelegram("");
+                    }}
+                  >
+                    {sendingInvite ? "Sending..." : "Invite"}
                   </button>
                 </div>
 

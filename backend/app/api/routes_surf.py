@@ -8,23 +8,30 @@ from app.models.user import User
 from app.schemas.surf import (
     GroupCreate,
     GroupRead,
+    InboxItemRead,
     InviteRead,
     JoinInvitePayload,
     RSVPUpdate,
     SessionCreate,
+    SessionInviteCreate,
+    SessionInviteRead,
     SessionRead,
     SessionReportCreate,
     SessionReportRead,
 )
 from app.services.surf_service import (
+    accept_session_invite,
     create_group,
     create_invite,
     create_report,
+    create_session_invite,
     create_session,
     join_by_code,
+    list_inbox_items,
     list_groups,
     list_reports,
     list_sessions,
+    mark_inbox_read,
     my_rsvp_map,
     set_rsvp,
 )
@@ -195,3 +202,92 @@ def get_reports(
         )
         for report, user in records
     ]
+
+
+@router.post("/sessions/{session_id}/invite", response_model=SessionInviteRead)
+def post_session_invite(
+    session_id: int,
+    payload: SessionInviteCreate,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionInviteRead:
+    invite = create_session_invite(
+        db,
+        session_id,
+        current_user,
+        payload.username.strip().lower() if payload.username else None,
+        payload.telegram_username,
+    )
+    invited_username = None
+    if invite.invited_user_id:
+        user = db.get(User, invite.invited_user_id)
+        invited_username = user.username if user else None
+    return SessionInviteRead(
+        id=invite.id,
+        session_id=invite.session_id,
+        status=invite.status,
+        invited_username=invited_username,
+        invited_telegram_username=invite.invited_telegram_username,
+        invite_token=invite.invite_token,
+        created_at=invite.created_at,
+    )
+
+
+@router.post("/invites/{invite_id}/accept", response_model=SessionInviteRead)
+def post_accept_invite(
+    invite_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionInviteRead:
+    invite = accept_session_invite(db, invite_id, current_user)
+    invited_username = None
+    if invite.invited_user_id:
+        user = db.get(User, invite.invited_user_id)
+        invited_username = user.username if user else None
+    return SessionInviteRead(
+        id=invite.id,
+        session_id=invite.session_id,
+        status=invite.status,
+        invited_username=invited_username,
+        invited_telegram_username=invite.invited_telegram_username,
+        invite_token=invite.invite_token,
+        created_at=invite.created_at,
+    )
+
+
+@router.get("/inbox", response_model=list[InboxItemRead])
+def get_inbox(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[InboxItemRead]:
+    items = list_inbox_items(db, current_user)
+    return [
+        InboxItemRead(
+            id=item.id,
+            item_type=item.item_type,
+            title=item.title,
+            body=item.body,
+            is_read=item.is_read,
+            related_invite_id=item.related_invite_id,
+            created_at=item.created_at,
+        )
+        for item in items
+    ]
+
+
+@router.patch("/inbox/{item_id}/read", response_model=InboxItemRead)
+def patch_inbox_read(
+    item_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> InboxItemRead:
+    item = mark_inbox_read(db, item_id, current_user)
+    return InboxItemRead(
+        id=item.id,
+        item_type=item.item_type,
+        title=item.title,
+        body=item.body,
+        is_read=item.is_read,
+        related_invite_id=item.related_invite_id,
+        created_at=item.created_at,
+    )

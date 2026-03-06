@@ -103,6 +103,9 @@ def complete_verification(db: Session, token: str, chat_id: int, tg_username: st
     user.telegram_verify_token = None
     db.add(user)
     db.commit()
+    from app.services.surf_service import finalize_registration_invites
+
+    finalize_registration_invites(db, user)
     return True
 
 
