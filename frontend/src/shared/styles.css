@@ -120,6 +120,17 @@ body {
   font-family: "Space Grotesk", sans-serif;
 }
 
+.crew-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.crew-toggle {
+  padding: 0.35rem 0.55rem;
+}
+
 .stack-form {
   display: grid;
   gap: 0.55rem;

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import type { SurfGroup, SurfInvite } from "../features/surf/types";
 
 interface Props {
@@ -29,8 +29,16 @@ export function SurfGroupPanel({
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [crewOpen, setCrewOpen] = useState(true);
+  const [createOpen, setCreateOpen] = useState(groups.length === 0);
 
   const selected = groups.find((group) => group.id === selectedGroupId) ?? null;
+
+  useEffect(() => {
+    if (groups.length === 0) {
+      setCreateOpen(true);
+    }
+  }, [groups.length]);
 
   const submitGroup = async (event: FormEvent) => {
     event.preventDefault();
@@ -53,68 +61,104 @@ export function SurfGroupPanel({
 
   return (
     <aside className="card surf-sidebar">
-      <h2>Your Crew</h2>
-      <form onSubmit={submitGroup} className="stack-form">
-        <label>
-          New Group Name
-          <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
-        </label>
-        <label>
-          Description
-          <textarea
-            value={groupDescription}
-            onChange={(event) => setGroupDescription(event.target.value)}
-            placeholder="Weekend dawn patrol team"
-          />
-        </label>
-        <button type="submit" disabled={creatingGroup}>
-          {creatingGroup ? "Creating..." : "Create group"}
+      <div className="crew-header">
+        <h2>Your Crew</h2>
+        <button className="ghost crew-toggle" type="button" onClick={() => setCrewOpen((value) => !value)}>
+          {crewOpen ? "Collapse" : "Expand"}
         </button>
-      </form>
-
-      <form onSubmit={submitJoin} className="stack-form">
-        <label>
-          Join by Invite Code
-          <input
-            value={inviteCode}
-            onChange={(event) => setInviteCode(event.target.value)}
-            placeholder="AB12CD34EF56"
-          />
-        </label>
-        <button type="submit" disabled={joiningByCode}>
-          {joiningByCode ? "Joining..." : "Join group"}
-        </button>
-      </form>
-
-      <div className="group-list">
-        {groups.map((group) => (
-          <button
-            key={group.id}
-            className={`group-item ${selectedGroupId === group.id ? "active" : ""}`}
-            onClick={() => onSelectGroup(group.id)}
-          >
-            <strong>{group.name}</strong>
-            <small>{group.role}</small>
-          </button>
-        ))}
       </div>
+      {!crewOpen ? null : (
+        <>
+          {groups.length === 0 ? (
+            <form onSubmit={submitGroup} className="stack-form">
+              <label>
+                New Group Name
+                <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
+              </label>
+              <label>
+                Description
+                <textarea
+                  value={groupDescription}
+                  onChange={(event) => setGroupDescription(event.target.value)}
+                  placeholder="Weekend dawn patrol team"
+                />
+              </label>
+              <button type="submit" disabled={creatingGroup}>
+                {creatingGroup ? "Creating..." : "Create group"}
+              </button>
+            </form>
+          ) : (
+            <div className="stack-form">
+              <button className="ghost" type="button" onClick={() => setCreateOpen((value) => !value)}>
+                {createOpen ? "Hide create form" : "Create another group"}
+              </button>
+              {createOpen ? (
+                <form onSubmit={submitGroup} className="stack-form">
+                  <label>
+                    New Group Name
+                    <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      value={groupDescription}
+                      onChange={(event) => setGroupDescription(event.target.value)}
+                      placeholder="Weekend dawn patrol team"
+                    />
+                  </label>
+                  <button type="submit" disabled={creatingGroup}>
+                    {creatingGroup ? "Creating..." : "Create group"}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          )}
 
-      {selected ? (
-        <div className="invite-box">
-          <button
-            disabled={creatingInvite}
-            onClick={() => onCreateInvite(selected.id)}
-            className="ghost"
-          >
-            {creatingInvite ? "Generating..." : "Generate invite"}
-          </button>
-          {invitesByGroup[selected.id] ? (
-            <p className="tiny">
-              Code: <code>{invitesByGroup[selected.id]?.code}</code>
-            </p>
+          <form onSubmit={submitJoin} className="stack-form">
+            <label>
+              Join by Invite Code
+              <input
+                value={inviteCode}
+                onChange={(event) => setInviteCode(event.target.value)}
+                placeholder="AB12CD34EF56"
+              />
+            </label>
+            <button type="submit" disabled={joiningByCode}>
+              {joiningByCode ? "Joining..." : "Join group"}
+            </button>
+          </form>
+
+          <div className="group-list">
+            {groups.map((group) => (
+              <button
+                key={group.id}
+                className={`group-item ${selectedGroupId === group.id ? "active" : ""}`}
+                onClick={() => onSelectGroup(group.id)}
+              >
+                <strong>{group.name}</strong>
+                <small>{group.role}</small>
+              </button>
+            ))}
+          </div>
+
+          {selected ? (
+            <div className="invite-box">
+              <button
+                disabled={creatingInvite}
+                onClick={() => onCreateInvite(selected.id)}
+                className="ghost"
+              >
+                {creatingInvite ? "Generating..." : "Generate invite"}
+              </button>
+              {invitesByGroup[selected.id] ? (
+                <p className="tiny">
+                  Code: <code>{invitesByGroup[selected.id]?.code}</code>
+                </p>
+              ) : null}
+            </div>
           ) : null}
-        </div>
-      ) : null}
+        </>
+      )}
     </aside>
   );
 }
