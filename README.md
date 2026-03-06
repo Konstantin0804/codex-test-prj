@@ -5,6 +5,8 @@
 ## Что реализовано
 
 - Kanban по задачам (`backlog`, `in_progress`, `done`)
+- Регистрация/логин пользователя (JWT bearer token)
+- Изоляция данных по пользователям (каждый видит только свои задачи)
 - Создание, удаление, смена статуса задач
 - KPI-метрики на главной (total, in-progress, done, completion)
 - API с валидацией схем Pydantic
@@ -18,7 +20,7 @@
 
 ```bash
 cp .env.example .env
-docker compose up --build
+make up
 ```
 
 После старта:
@@ -26,6 +28,39 @@ docker compose up --build
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000
 - API docs: http://localhost:8000/docs
+
+Остановка с очисткой контейнеров и локальных образов проекта:
+
+```bash
+make down
+```
+
+Полезные команды:
+
+```bash
+make ps
+make logs
+make restart
+```
+
+Первый вход в приложение:
+
+- Открой `http://localhost:5173`
+- Зарегистрируй нового пользователя (или зайди под существующим)
+- После логина токен сохраняется в `localStorage`
+
+## Запуск с Neon (cloud Postgres)
+
+1. Создай базу в Neon и получи connection string.
+2. В терминале:
+
+```bash
+cp .env.neon.example .env
+# вставь свой DATABASE_URL (sslmode=require)
+make up-neon
+```
+
+В этом режиме локальный контейнер Postgres не запускается, backend работает напрямую с Neon.
 
 ## Структура
 
@@ -37,11 +72,33 @@ docker compose up --build
 ## API
 
 - `GET /health`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
 - `GET /api/v1/tasks`
 - `POST /api/v1/tasks`
 - `PATCH /api/v1/tasks/{id}/status`
 - `DELETE /api/v1/tasks/{id}`
 - `GET /api/v1/tasks/stats`
+
+Все эндпоинты `/api/v1/tasks/*` требуют заголовок:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+## Seed (опционально)
+
+Автосид при старте отключен, чтобы не перетирать данные.
+Если нужно вручную наполнить демо-данными:
+
+```bash
+docker compose exec backend python scripts/seed.py
+```
+
+Скрипт создаёт пользователя:
+- username: `demo`
+- password: `demo12345`
 
 ## Бесплатный деплой (варианты)
 
@@ -72,7 +129,6 @@ git push -u origin main
 
 ## Что можно добавить дальше
 
-- Авторизация (JWT, refresh tokens)
 - Drag-and-drop колонок
 - Фильтрация/поиск/пагинация
 - E2E тесты (Playwright)

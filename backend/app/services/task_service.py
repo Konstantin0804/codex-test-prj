@@ -2,16 +2,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.task import Task, TaskStatus
+from app.models.user import User
 from app.schemas.task import TaskCreate, TaskStats
 
 
-def list_tasks(db: Session) -> list[Task]:
-    stmt = select(Task).order_by(Task.created_at.desc())
+def list_tasks(db: Session, user: User) -> list[Task]:
+    stmt = select(Task).where(Task.user_id == user.id).order_by(Task.created_at.desc())
     return list(db.scalars(stmt).all())
 
 
-def create_task(db: Session, payload: TaskCreate) -> Task:
-    task = Task(**payload.model_dump())
+def create_task(db: Session, payload: TaskCreate, user: User) -> Task:
+    task = Task(**payload.model_dump(), user_id=user.id)
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -31,8 +32,8 @@ def delete_task(db: Session, task: Task) -> None:
     db.commit()
 
 
-def get_task_stats(db: Session) -> TaskStats:
-    total = db.scalar(select(func.count(Task.id))) or 0
+def get_task_stats(db: Session, user: User) -> TaskStats:
+    total = db.scalar(select(func.count(Task.id)).where(Task.user_id == user.id)) or 0
 
     if total == 0:
         return TaskStats(
@@ -45,11 +46,14 @@ def get_task_stats(db: Session) -> TaskStats:
         )
 
     counts = {
-        status: db.scalar(select(func.count(Task.id)).where(Task.status == status)) or 0
+        status: db.scalar(
+            select(func.count(Task.id)).where(Task.status == status, Task.user_id == user.id)
+        )
+        or 0
         for status in TaskStatus
     }
 
-    avg_priority = db.scalar(select(func.avg(Task.priority))) or 0
+    avg_priority = db.scalar(select(func.avg(Task.priority)).where(Task.user_id == user.id)) or 0
     completion_rate = (counts[TaskStatus.done] / total) * 100
 
     return TaskStats(

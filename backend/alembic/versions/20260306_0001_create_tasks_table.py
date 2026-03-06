@@ -2,6 +2,7 @@
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision = "20260306_0001"
 down_revision = None
@@ -12,13 +13,20 @@ depends_on = None
 def upgrade() -> None:
     task_status = sa.Enum("backlog", "in_progress", "done", name="taskstatus")
     task_status.create(op.get_bind(), checkfirst=True)
+    task_status_column = postgresql.ENUM(
+        "backlog",
+        "in_progress",
+        "done",
+        name="taskstatus",
+        create_type=False,
+    )
 
     op.create_table(
         "tasks",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("title", sa.String(length=160), nullable=False),
         sa.Column("description", sa.Text(), nullable=False, server_default=""),
-        sa.Column("status", task_status, nullable=False, server_default="backlog"),
+        sa.Column("status", task_status_column, nullable=False, server_default="backlog"),
         sa.Column("priority", sa.Integer(), nullable=False, server_default="3"),
         sa.Column("estimate_hours", sa.Integer(), nullable=False, server_default="4"),
         sa.Column("due_date", sa.Date(), nullable=False),

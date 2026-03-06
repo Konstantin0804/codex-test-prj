@@ -1,11 +1,18 @@
 from logging.config import fileConfig
+from pathlib import Path
+import sys
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from app.core.config import get_settings
 from app.db.base import Base
 from app.models.task import Task  # noqa: F401
+from app.models.user import User  # noqa: F401
 
 config = context.config
 settings = get_settings()

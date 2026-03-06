@@ -1,7 +1,7 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, Integer, String, Text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -23,4 +23,5 @@ class Task(Base):
     priority: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     estimate_hours: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

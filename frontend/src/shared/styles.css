@@ -58,6 +58,18 @@ body {
   color: var(--muted);
 }
 
+.auth-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 0.8rem;
+}
+
+.auth-strip span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -231,6 +243,32 @@ button.ghost {
 
 .error {
   color: #b91c1c;
+}
+
+.auth-layout {
+  min-height: 80vh;
+  display: grid;
+  place-items: center;
+}
+
+.auth-card {
+  width: min(480px, 100%);
+  padding: 1.2rem;
+}
+
+.auth-card h1 {
+  margin: 0.4rem 0;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.auth-card p {
+  color: var(--muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
 }
 
 @media (max-width: 1020px) {

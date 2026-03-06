@@ -16,6 +16,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    profiles: ["localdb"]
 
   backend:
     build:
@@ -23,13 +24,11 @@ services:
     container_name: pulseboard-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-pulseboard}:${POSTGRES_PASSWORD:-pulseboard}@db:5432/${POSTGRES_DB:-pulseboard}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-pulseboard}:${POSTGRES_PASSWORD:-pulseboard}@db:5432/${POSTGRES_DB:-pulseboard}}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
     ports:
       - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
 
   frontend:
     build:

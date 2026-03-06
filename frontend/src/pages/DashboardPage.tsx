@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { AuthPanel } from "../components/AuthPanel";
 import {
   createTask,
   fetchTasks,
@@ -8,6 +9,7 @@ import {
   updateTaskStatus
 } from "../features/tasks/tasksSlice";
 import type { TaskPayload, TaskStatus } from "../features/tasks/types";
+import { logout } from "../features/auth/authSlice";
 import {
   selectError,
   selectLoading,
@@ -25,11 +27,19 @@ export function DashboardPage() {
   const stats = useAppSelector(selectTaskStats);
   const loading = useAppSelector(selectLoading);
   const error = useAppSelector(selectError);
+  const { token, username } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
+    if (!token) {
+      return;
+    }
     void dispatch(fetchTasks());
     void dispatch(fetchTaskStats());
-  }, [dispatch]);
+  }, [dispatch, token]);
+
+  if (!token) {
+    return <AuthPanel />;
+  }
 
   const refreshStats = async () => {
     await dispatch(fetchTaskStats());
@@ -53,6 +63,12 @@ export function DashboardPage() {
   return (
     <main className="layout">
       <AppHeader />
+      <div className="auth-strip">
+        <span>Signed in as @{username}</span>
+        <button className="ghost" onClick={() => dispatch(logout())}>
+          Logout
+        </button>
+      </div>
       <KpiCards stats={stats} />
       {loading ? <p className="status">Loading tasks...</p> : null}
       {error ? <p className="error">{error}</p> : null}
