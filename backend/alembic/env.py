@@ -11,7 +11,16 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.core.config import get_settings
 from app.db.base import Base
+from app.models.surf import (  # noqa: F401
+    GroupInvite,
+    GroupMembership,
+    SessionReport,
+    SessionRSVP,
+    SurfGroup,
+    SurfSession,
+)
 from app.models.task import Task  # noqa: F401
+from app.models.telegram import TelegramChatLink  # noqa: F401
 from app.models.user import User  # noqa: F401
 
 config = context.config

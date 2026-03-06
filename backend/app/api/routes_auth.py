@@ -3,17 +3,28 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db_dep
 from app.models.user import User
-from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserRead
-from app.services.auth_service import authenticate_user, create_user, issue_token
+from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, RegisterResponse, UserRead
+from app.services.auth_service import (
+    authenticate_user,
+    create_user,
+    get_bot_link,
+    issue_token,
+    trigger_telegram_verification,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=AuthResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db_dep)) -> AuthResponse:
-    user = create_user(db, payload.username.strip().lower(), payload.password)
-    token = issue_token(user)
-    return AuthResponse(access_token=token, username=user.username)
+@router.post("/register", response_model=RegisterResponse)
+def register(payload: RegisterRequest, db: Session = Depends(get_db_dep)) -> RegisterResponse:
+    user = create_user(
+        db,
+        payload.username.strip().lower(),
+        payload.password,
+        payload.telegram_username,
+    )
+    status_value, message = trigger_telegram_verification(user)
+    return RegisterResponse(status=status_value, message=message, bot_link=get_bot_link(user))
 
 
 @router.post("/login", response_model=AuthResponse)

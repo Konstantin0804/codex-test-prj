@@ -6,6 +6,7 @@
 
 - Kanban по задачам (`backlog`, `in_progress`, `done`)
 - Регистрация/логин пользователя (JWT bearer token)
+- Telegram-подтверждение регистрации через бота
 - Изоляция данных по пользователям (каждый видит только свои задачи)
 - Создание, удаление, смена статуса задач
 - KPI-метрики на главной (total, in-progress, done, completion)
@@ -77,6 +78,7 @@ make up-neon
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
+- `POST /api/v1/telegram/webhook`
 - `GET /api/v1/tasks`
 - `POST /api/v1/tasks`
 - `PATCH /api/v1/tasks/{id}/status`
@@ -101,6 +103,21 @@ docker compose exec backend python scripts/seed.py
 Скрипт создаёт пользователя:
 - username: `demo`
 - password: `demo12345`
+
+## Telegram verification
+
+При регистрации пользователь должен указать Telegram username (например `@Slepchenko_Konstantin`).
+Логин будет доступен только после подтверждения в боте.
+
+Переменные окружения backend:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_BOT_USERNAME`
+- `TELEGRAM_WEBHOOK_SECRET` (опционально, но рекомендуется)
+
+Webhook endpoint:
+
+`POST /api/v1/telegram/webhook`
 
 ## Бесплатный деплой (рекомендуемый)
 

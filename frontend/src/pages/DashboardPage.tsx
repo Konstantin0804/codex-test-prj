@@ -1,69 +1,91 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { AuthPanel } from "../components/AuthPanel";
-import {
-  createTask,
-  fetchTasks,
-  fetchTaskStats,
-  removeTask,
-  updateTaskStatus
-} from "../features/tasks/tasksSlice";
-import type { TaskPayload, TaskStatus } from "../features/tasks/types";
+import { AppHeader } from "../components/AppHeader";
+import { SurfCalendar } from "../components/SurfCalendar";
+import { SurfGroupPanel } from "../components/SurfGroupPanel";
+import { SurfSessionComposer } from "../components/SurfSessionComposer";
 import { logout } from "../features/auth/authSlice";
 import {
-  selectCreating,
-  selectDeletingIds,
-  selectError,
-  selectLoading,
-  selectMovingIds,
-  selectTaskStats,
-  selectTasks
-} from "../features/summary/selectors";
-import { AppHeader } from "../components/AppHeader";
-import { KpiCards } from "../components/KpiCards";
-import { TaskComposer } from "../components/TaskComposer";
-import { TaskBoard } from "../components/TaskBoard";
+  createGroup,
+  createInvite,
+  createReport,
+  createSession,
+  fetchGroups,
+  fetchReports,
+  fetchSessions,
+  joinByInvite,
+  selectGroup,
+  setRsvp
+} from "../features/surf/surfSlice";
+import type { ReportCreatePayload, SessionCreatePayload } from "../features/surf/types";
 
 export function DashboardPage() {
   const dispatch = useAppDispatch();
-  const tasks = useAppSelector(selectTasks);
-  const stats = useAppSelector(selectTaskStats);
-  const loading = useAppSelector(selectLoading);
-  const creating = useAppSelector(selectCreating);
-  const movingIds = useAppSelector(selectMovingIds);
-  const deletingIds = useAppSelector(selectDeletingIds);
-  const error = useAppSelector(selectError);
   const { token, username } = useAppSelector((state) => state.auth);
+  const {
+    groups,
+    selectedGroupId,
+    sessions,
+    reportsBySession,
+    invitesByGroup,
+    loadingGroups,
+    loadingSessions,
+    creatingGroup,
+    joiningByCode,
+    creatingSession,
+    creatingInvite,
+    rsvpLoadingIds,
+    reportLoadingIds,
+    error
+  } = useAppSelector((state) => state.surf);
 
   useEffect(() => {
     if (!token) {
       return;
     }
-    void dispatch(fetchTasks());
-    void dispatch(fetchTaskStats());
+    void dispatch(fetchGroups());
   }, [dispatch, token]);
+
+  useEffect(() => {
+    if (!selectedGroupId) {
+      return;
+    }
+    void dispatch(fetchSessions(selectedGroupId));
+  }, [dispatch, selectedGroupId]);
 
   if (!token) {
     return <AuthPanel />;
   }
 
-  const refreshStats = async () => {
-    await dispatch(fetchTaskStats());
+  const handleCreateGroup = async (name: string, description: string) => {
+    await dispatch(createGroup({ name, description }));
   };
 
-  const handleCreate = async (payload: TaskPayload) => {
-    await dispatch(createTask(payload));
-    await refreshStats();
+  const handleJoinByCode = async (code: string) => {
+    await dispatch(joinByInvite(code));
   };
 
-  const handleMove = async (id: number, status: TaskStatus) => {
-    await dispatch(updateTaskStatus({ id, status }));
-    await refreshStats();
+  const handleCreateSession = async (payload: SessionCreatePayload) => {
+    if (!selectedGroupId) {
+      return;
+    }
+    await dispatch(createSession({ groupId: selectedGroupId, payload }));
   };
 
-  const handleDelete = async (id: number) => {
-    await dispatch(removeTask(id));
-    await refreshStats();
+  const handleRsvp = async (
+    sessionId: number,
+    status: "going" | "maybe" | "not_going"
+  ) => {
+    await dispatch(setRsvp({ sessionId, status }));
+  };
+
+  const handleCreateReport = async (sessionId: number, payload: ReportCreatePayload) => {
+    await dispatch(createReport({ sessionId, payload }));
+  };
+
+  const handleLoadReports = async (sessionId: number) => {
+    await dispatch(fetchReports(sessionId));
   };
 
   return (
@@ -75,18 +97,46 @@ export function DashboardPage() {
           Logout
         </button>
       </div>
-      <KpiCards stats={stats} />
-      {loading ? <p className="status">Loading tasks...</p> : null}
       {error ? <p className="error">{error}</p> : null}
-      <section className="main-grid">
-        <TaskComposer onSubmit={handleCreate} creating={creating} />
-        <TaskBoard
-          tasks={tasks}
-          onMove={handleMove}
-          onDelete={handleDelete}
-          movingIds={movingIds}
-          deletingIds={deletingIds}
+      <section className="surf-layout">
+        <SurfGroupPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          invitesByGroup={invitesByGroup}
+          creatingGroup={creatingGroup}
+          joiningByCode={joiningByCode}
+          creatingInvite={creatingInvite}
+          onSelectGroup={(id) => dispatch(selectGroup(id))}
+          onCreateGroup={handleCreateGroup}
+          onJoinByCode={handleJoinByCode}
+          onCreateInvite={async (groupId) => {
+            await dispatch(createInvite(groupId));
+          }}
         />
+
+        <section className="surf-main">
+          {loadingGroups ? <p className="status">Loading groups...</p> : null}
+          {!selectedGroupId ? (
+            <article className="card empty-block">
+              <h3>No group selected</h3>
+              <p>Create or join a group to start planning surf sessions.</p>
+            </article>
+          ) : (
+            <>
+              <SurfSessionComposer disabled={creatingSession} onSubmit={handleCreateSession} />
+              <SurfCalendar
+                sessions={sessions}
+                loading={loadingSessions}
+                rsvpLoadingIds={rsvpLoadingIds}
+                reportLoadingIds={reportLoadingIds}
+                reportsBySession={reportsBySession}
+                onRsvp={handleRsvp}
+                onCreateReport={handleCreateReport}
+                onLoadReports={handleLoadReports}
+              />
+            </>
+          )}
+        </section>
       </section>
     </main>
   );

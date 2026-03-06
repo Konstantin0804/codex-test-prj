@@ -17,6 +17,9 @@
    - `DATABASE_URL` = Neon connection string (`...sslmode=require`)
    - `JWT_SECRET_KEY` = strong random secret
    - `CORS_ORIGINS` = Cloudflare Pages production URL (e.g. `https://pulseboard-ui.pages.dev`)
+   - `TELEGRAM_BOT_TOKEN` = token from BotFather
+   - `TELEGRAM_BOT_USERNAME` = bot username (without `@`)
+   - `TELEGRAM_WEBHOOK_SECRET` = random secret string
 5. Deploy and wait for health check `GET /health` to pass.
 
 ### Option B: Manual service
@@ -25,6 +28,16 @@
 - Root directory: `backend`
 - Health check path: `/health`
 - Same env vars as above.
+
+### Configure Telegram webhook
+
+After backend deploy, set webhook in Telegram:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://<your-render-backend>.onrender.com/api/v1/telegram/webhook","secret_token":"<TELEGRAM_WEBHOOK_SECRET>"}'
+```
 
 ## 2) Deploy frontend to Cloudflare Pages
 
@@ -49,8 +62,8 @@
 
 1. Open backend docs: `https://<render-backend>.onrender.com/docs`
 2. Open frontend URL: `https://<cloudflare-project>.pages.dev`
-3. Register user and create a task from UI.
-4. Verify in backend logs that requests go through auth and tasks endpoints.
+3. Register user, confirm in Telegram bot, login.
+4. Create group/session and set RSVP from UI.
 
 ## Notes
 

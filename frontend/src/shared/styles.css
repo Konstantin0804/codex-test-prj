@@ -102,6 +102,158 @@ body {
   gap: 1rem;
 }
 
+.surf-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1rem;
+}
+
+.surf-sidebar {
+  padding: 1rem;
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+}
+
+.surf-sidebar h2 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.stack-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.group-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.group-item {
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.group-item.active {
+  border-color: rgba(234, 88, 12, 0.5);
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.12);
+}
+
+.group-item small {
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.invite-box {
+  border-top: 1px solid var(--border);
+  padding-top: 0.7rem;
+}
+
+.surf-main {
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+.surf-composer {
+  padding: 1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.calendar-wrap {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.day-block {
+  padding: 0.9rem;
+}
+
+.day-block h3 {
+  margin: 0 0 0.65rem;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.session-stack {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.session-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  padding: 0.75rem;
+}
+
+.session-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.chip-row button {
+  padding: 0.35rem 0.6rem;
+}
+
+.active-chip {
+  background: #ea580c;
+  color: white;
+}
+
+.report-area {
+  border-top: 1px dashed var(--border);
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.report-form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.report-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.report-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+}
+
+.report-item p {
+  margin: 0.2rem 0;
+}
+
+.tiny {
+  color: var(--muted);
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+.empty-block {
+  padding: 1rem;
+}
+
 .composer {
   padding: 1rem;
   display: grid;
@@ -307,6 +459,10 @@ button.ghost {
 
 @media (max-width: 1020px) {
   .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .surf-layout {
     grid-template-columns: 1fr;
   }
 

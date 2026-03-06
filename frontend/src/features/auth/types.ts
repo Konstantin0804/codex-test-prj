@@ -3,6 +3,8 @@ export interface AuthState {
   username: string | null;
   loading: boolean;
   error: string | null;
+  registerMessage: string | null;
+  registerBotLink: string | null;
 }
 
 export interface AuthResponse {
@@ -16,4 +18,12 @@ export interface LoginPayload {
   password: string;
 }
 
-export type RegisterPayload = LoginPayload;
+export interface RegisterPayload extends LoginPayload {
+  telegram_username: string;
+}
+
+export interface RegisterResponse {
+  status: string;
+  message: string;
+  bot_link: string | null;
+}

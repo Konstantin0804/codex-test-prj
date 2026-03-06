@@ -1,6 +1,12 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { api, clearAuthToken, setAuthToken } from "../../shared/api";
-import type { AuthResponse, AuthState, LoginPayload, RegisterPayload } from "./types";
+import type {
+  AuthResponse,
+  AuthState,
+  LoginPayload,
+  RegisterPayload,
+  RegisterResponse
+} from "./types";
 
 const savedToken = localStorage.getItem("pulseboard_token");
 const savedUsername = localStorage.getItem("pulseboard_username");
@@ -9,7 +15,9 @@ const initialState: AuthState = {
   token: savedToken,
   username: savedUsername,
   loading: false,
-  error: null
+  error: null,
+  registerMessage: null,
+  registerBotLink: null
 };
 
 const persistAuth = (payload: AuthResponse) => {
@@ -25,8 +33,7 @@ export const login = createAsyncThunk("auth/login", async (payload: LoginPayload
 });
 
 export const register = createAsyncThunk("auth/register", async (payload: RegisterPayload) => {
-  const response = await api.post<AuthResponse>("/auth/register", payload);
-  persistAuth(response.data);
+  const response = await api.post<RegisterResponse>("/auth/register", payload);
   return response.data;
 });
 
@@ -38,6 +45,8 @@ const authSlice = createSlice({
       state.token = null;
       state.username = null;
       state.error = null;
+      state.registerMessage = null;
+      state.registerBotLink = null;
       localStorage.removeItem("pulseboard_token");
       localStorage.removeItem("pulseboard_username");
       clearAuthToken();
@@ -53,6 +62,7 @@ const authSlice = createSlice({
       .addCase(login.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.registerMessage = null;
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
@@ -66,11 +76,13 @@ const authSlice = createSlice({
       .addCase(register.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.registerMessage = null;
+        state.registerBotLink = null;
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.access_token;
-        state.username = action.payload.username;
+        state.registerMessage = action.payload.message;
+        state.registerBotLink = action.payload.bot_link;
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
