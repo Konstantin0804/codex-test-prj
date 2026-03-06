@@ -11,8 +11,11 @@ import {
 import type { TaskPayload, TaskStatus } from "../features/tasks/types";
 import { logout } from "../features/auth/authSlice";
 import {
+  selectCreating,
+  selectDeletingIds,
   selectError,
   selectLoading,
+  selectMovingIds,
   selectTaskStats,
   selectTasks
 } from "../features/summary/selectors";
@@ -26,6 +29,9 @@ export function DashboardPage() {
   const tasks = useAppSelector(selectTasks);
   const stats = useAppSelector(selectTaskStats);
   const loading = useAppSelector(selectLoading);
+  const creating = useAppSelector(selectCreating);
+  const movingIds = useAppSelector(selectMovingIds);
+  const deletingIds = useAppSelector(selectDeletingIds);
   const error = useAppSelector(selectError);
   const { token, username } = useAppSelector((state) => state.auth);
 
@@ -73,8 +79,14 @@ export function DashboardPage() {
       {loading ? <p className="status">Loading tasks...</p> : null}
       {error ? <p className="error">{error}</p> : null}
       <section className="main-grid">
-        <TaskComposer onSubmit={handleCreate} />
-        <TaskBoard tasks={tasks} onMove={handleMove} onDelete={handleDelete} />
+        <TaskComposer onSubmit={handleCreate} creating={creating} />
+        <TaskBoard
+          tasks={tasks}
+          onMove={handleMove}
+          onDelete={handleDelete}
+          movingIds={movingIds}
+          deletingIds={deletingIds}
+        />
       </section>
     </main>
   );

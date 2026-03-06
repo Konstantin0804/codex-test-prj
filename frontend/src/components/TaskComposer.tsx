@@ -3,6 +3,7 @@ import type { TaskPayload } from "../features/tasks/types";
 
 interface Props {
   onSubmit: (payload: TaskPayload) => Promise<void>;
+  creating?: boolean;
 }
 
 const initialState: TaskPayload = {
@@ -14,7 +15,7 @@ const initialState: TaskPayload = {
   due_date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10)
 };
 
-export function TaskComposer({ onSubmit }: Props) {
+export function TaskComposer({ onSubmit, creating = false }: Props) {
   const [form, setForm] = useState<TaskPayload>(initialState);
   const [saving, setSaving] = useState(false);
 
@@ -110,8 +111,8 @@ export function TaskComposer({ onSubmit }: Props) {
           }
         />
       </label>
-      <button type="submit" disabled={saving}>
-        {saving ? "Saving..." : "Add task"}
+      <button type="submit" disabled={saving || creating}>
+        {saving || creating ? "Creating..." : "Add task"}
       </button>
     </form>
   );

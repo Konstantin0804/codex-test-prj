@@ -6,6 +6,9 @@ interface TasksState {
   items: Task[];
   stats: TaskStats | null;
   loading: boolean;
+  creating: boolean;
+  movingIds: number[];
+  deletingIds: number[];
   error: string | null;
 }
 
@@ -13,6 +16,9 @@ const initialState: TasksState = {
   items: [],
   stats: null,
   loading: false,
+  creating: false,
+  movingIds: [],
+  deletingIds: [],
   error: null
 };
 
@@ -68,17 +74,45 @@ const tasksSlice = createSlice({
       .addCase(fetchTaskStats.fulfilled, (state, action) => {
         state.stats = action.payload;
       })
+      .addCase(createTask.pending, (state) => {
+        state.creating = true;
+      })
       .addCase(createTask.fulfilled, (state, action) => {
+        state.creating = false;
         state.items.unshift(action.payload);
       })
+      .addCase(createTask.rejected, (state, action) => {
+        state.creating = false;
+        state.error = action.error.message ?? "Failed to create task";
+      })
+      .addCase(updateTaskStatus.pending, (state, action) => {
+        if (!state.movingIds.includes(action.meta.arg.id)) {
+          state.movingIds.push(action.meta.arg.id);
+        }
+      })
       .addCase(updateTaskStatus.fulfilled, (state, action) => {
+        state.movingIds = state.movingIds.filter((id) => id !== action.payload.id);
         const index = state.items.findIndex((item) => item.id === action.payload.id);
         if (index >= 0) {
           state.items[index] = action.payload;
         }
       })
+      .addCase(updateTaskStatus.rejected, (state, action) => {
+        state.movingIds = state.movingIds.filter((id) => id !== action.meta.arg.id);
+        state.error = action.error.message ?? "Failed to move task";
+      })
+      .addCase(removeTask.pending, (state, action) => {
+        if (!state.deletingIds.includes(action.meta.arg)) {
+          state.deletingIds.push(action.meta.arg);
+        }
+      })
       .addCase(removeTask.fulfilled, (state, action) => {
+        state.deletingIds = state.deletingIds.filter((id) => id !== action.payload);
         state.items = state.items.filter((item) => item.id !== action.payload);
+      })
+      .addCase(removeTask.rejected, (state, action) => {
+        state.deletingIds = state.deletingIds.filter((id) => id !== action.meta.arg);
+        state.error = action.error.message ?? "Failed to delete task";
       });
   }
 });
