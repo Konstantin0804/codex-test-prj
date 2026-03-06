@@ -16,6 +16,7 @@ from app.models.surf import (  # noqa: F401
     GroupMembership,
     InboxItem,
     SessionInvite,
+    SessionPhoto,
     SessionReport,
     SessionRSVP,
     SurfGroup,

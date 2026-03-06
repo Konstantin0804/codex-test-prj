@@ -14,6 +14,7 @@ from app.models.surf import (
     InviteStatus,
     SessionInvite,
     SessionInviteStatus,
+    SessionPhoto,
     SessionReport,
     SessionRSVP,
     SurfGroup,
@@ -22,6 +23,7 @@ from app.models.surf import (
 from app.models.telegram import TelegramChatLink
 from app.models.user import User
 from app.schemas.surf import SessionCreate
+from app.services.storage_service import upload_session_photo
 from app.services.telegram_service import normalize_telegram_username, send_message
 
 settings = get_settings()
@@ -421,6 +423,48 @@ def create_report(
     db.commit()
     db.refresh(report)
     return report
+
+
+def add_session_photo(
+    db: Session,
+    session_id: int,
+    user: User,
+    content_type: str,
+    data: bytes,
+) -> SessionPhoto:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+
+    key, public_url = upload_session_photo(data, content_type, session_id, user.id)
+    photo = SessionPhoto(
+        session_id=session_id,
+        uploaded_by_user_id=user.id,
+        object_key=key,
+        public_url=public_url,
+        content_type=content_type,
+        file_size_bytes=len(data),
+    )
+    db.add(photo)
+    db.commit()
+    db.refresh(photo)
+    return photo
+
+
+def list_session_photos(db: Session, session_id: int, user: User) -> list[tuple[SessionPhoto, User]]:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+
+    stmt = (
+        select(SessionPhoto, User)
+        .join(User, User.id == SessionPhoto.uploaded_by_user_id)
+        .where(SessionPhoto.session_id == session_id)
+        .order_by(SessionPhoto.created_at.desc())
+    )
+    return list(db.execute(stmt).all())
 
 
 def list_reports(db: Session, session_id: int, user: User) -> list[tuple[SessionReport, User]]:

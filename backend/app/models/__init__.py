@@ -7,6 +7,7 @@ from app.models.surf import (
     RSVPStatus,
     SessionInvite,
     SessionInviteStatus,
+    SessionPhoto,
     SessionLevel,
     SessionReport,
     SessionRSVP,
@@ -33,6 +34,7 @@ __all__ = [
     "RSVPStatus",
     "SessionInvite",
     "SessionInviteStatus",
+    "SessionPhoto",
     "InboxItem",
     "TelegramChatLink",
 ]

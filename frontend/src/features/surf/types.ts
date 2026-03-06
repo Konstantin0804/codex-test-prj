@@ -46,6 +46,16 @@ export interface SessionReport {
   created_at: string;
 }
 
+export interface SessionPhoto {
+  id: number;
+  session_id: number;
+  uploaded_by_username: string;
+  public_url: string;
+  content_type: string;
+  file_size_bytes: number;
+  created_at: string;
+}
+
 export interface SessionInvite {
   id: number;
   session_id: number;
@@ -95,6 +105,7 @@ export interface SurfState {
   selectedGroupId: number | null;
   sessions: SurfSession[];
   reportsBySession: Record<number, SessionReport[]>;
+  photosBySession: Record<number, SessionPhoto[]>;
   invitesBySession: Record<number, SessionInvite[]>;
   invitesByGroup: Record<number, SurfInvite | null>;
   inbox: InboxItem[];
@@ -110,5 +121,7 @@ export interface SurfState {
   loadingInbox: boolean;
   rsvpLoadingIds: number[];
   reportLoadingIds: number[];
+  photoLoadingIds: number[];
+  photoUploadingIds: number[];
   error: string | null;
 }

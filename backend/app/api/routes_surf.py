@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db_dep
@@ -16,6 +16,7 @@ from app.schemas.surf import (
     SessionCreate,
     SessionInviteCreate,
     SessionInviteRead,
+    SessionPhotoRead,
     SessionRead,
     SessionReportCreate,
     SessionReportRead,
@@ -32,9 +33,11 @@ from app.services.surf_service import (
     list_inbox_items,
     list_groups,
     list_reports,
+    list_session_photos,
     list_sessions,
     mark_inbox_read,
     my_rsvp_map,
+    add_session_photo,
     set_rsvp,
 )
 
@@ -216,6 +219,53 @@ def get_reports(
         )
         for report, user in records
     ]
+
+
+@router.get("/sessions/{session_id}/photos", response_model=list[SessionPhotoRead])
+def get_session_photos(
+    session_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[SessionPhotoRead]:
+    rows = list_session_photos(db, session_id, current_user)
+    return [
+        SessionPhotoRead(
+            id=photo.id,
+            session_id=photo.session_id,
+            uploaded_by_username=user.username,
+            public_url=photo.public_url,
+            content_type=photo.content_type,
+            file_size_bytes=photo.file_size_bytes,
+            created_at=photo.created_at,
+        )
+        for photo, user in rows
+    ]
+
+
+@router.post("/sessions/{session_id}/photos", response_model=SessionPhotoRead)
+async def post_session_photo(
+    session_id: int,
+    photo: UploadFile = File(...),
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionPhotoRead:
+    data = await photo.read()
+    uploaded = add_session_photo(
+        db,
+        session_id=session_id,
+        user=current_user,
+        content_type=photo.content_type or "application/octet-stream",
+        data=data,
+    )
+    return SessionPhotoRead(
+        id=uploaded.id,
+        session_id=uploaded.session_id,
+        uploaded_by_username=current_user.username,
+        public_url=uploaded.public_url,
+        content_type=uploaded.content_type,
+        file_size_bytes=uploaded.file_size_bytes,
+        created_at=uploaded.created_at,
+    )
 
 
 @router.post("/sessions/{session_id}/invite", response_model=SessionInviteRead)

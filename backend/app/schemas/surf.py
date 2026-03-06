@@ -83,6 +83,16 @@ class SessionReportRead(BaseModel):
     created_at: datetime
 
 
+class SessionPhotoRead(BaseModel):
+    id: int
+    session_id: int
+    uploaded_by_username: str
+    public_url: str
+    content_type: str
+    file_size_bytes: int
+    created_at: datetime
+
+
 class SessionInviteCreate(BaseModel):
     username: str | None = None
     telegram_username: str | None = None

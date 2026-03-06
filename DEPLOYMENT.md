@@ -20,6 +20,12 @@
    - `TELEGRAM_BOT_TOKEN` = token from BotFather
    - `TELEGRAM_BOT_USERNAME` = bot username (without `@`)
    - `TELEGRAM_WEBHOOK_SECRET` = random secret string
+   - `R2_ACCOUNT_ID` = Cloudflare account id
+   - `R2_ACCESS_KEY_ID` = R2 API token access key
+   - `R2_SECRET_ACCESS_KEY` = R2 API token secret
+   - `R2_BUCKET` = bucket name for session photos
+   - `R2_PUBLIC_BASE_URL` = public URL for images (e.g. `https://pub-xxx.r2.dev`)
+   - `MAX_PHOTO_UPLOAD_MB` = optional upload limit (default `10`)
 5. Deploy and wait for health check `GET /health` to pass.
 
 ### Option B: Manual service
@@ -64,6 +70,7 @@ curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \\
 2. Open frontend URL: `https://<cloudflare-project>.pages.dev`
 3. Register user, confirm in Telegram bot, login.
 4. Create group/session and set RSVP from UI.
+5. Open session -> `Photos` and upload image to confirm R2 integration.
 
 ## Notes
 

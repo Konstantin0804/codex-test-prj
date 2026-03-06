@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import type { SessionReport, SurfSession } from "../features/surf/types";
+import type { SessionPhoto, SessionReport, SurfSession } from "../features/surf/types";
 
 interface Props {
   sessions: SurfSession[];
@@ -7,7 +7,10 @@ interface Props {
   rsvpLoadingIds: number[];
   reportLoadingIds: number[];
   reportsBySession: Record<number, SessionReport[]>;
+  photosBySession: Record<number, SessionPhoto[]>;
   sendingInvite: boolean;
+  photoLoadingIds: number[];
+  photoUploadingIds: number[];
   onSendInvite: (sessionId: number, username?: string, telegramUsername?: string) => Promise<void>;
   onRsvp: (sessionId: number, status: "going" | "maybe" | "not_going") => Promise<void>;
   onCreateReport: (
@@ -15,6 +18,8 @@ interface Props {
     payload: { wave_score: number; crowd_score: number; wind_score: number; note: string }
   ) => Promise<void>;
   onLoadReports: (sessionId: number) => Promise<void>;
+  onLoadPhotos: (sessionId: number) => Promise<void>;
+  onUploadPhoto: (sessionId: number, file: File) => Promise<void>;
 }
 
 export function SurfCalendar({
@@ -23,16 +28,23 @@ export function SurfCalendar({
   rsvpLoadingIds,
   reportLoadingIds,
   reportsBySession,
+  photosBySession,
   sendingInvite,
+  photoLoadingIds,
+  photoUploadingIds,
   onSendInvite,
   onRsvp,
   onCreateReport,
-  onLoadReports
+  onLoadReports,
+  onLoadPhotos,
+  onUploadPhoto
 }: Props) {
   const [openReportFor, setOpenReportFor] = useState<number | null>(null);
+  const [openPhotosFor, setOpenPhotosFor] = useState<number | null>(null);
   const [formState, setFormState] = useState({ wave_score: 7, crowd_score: 6, wind_score: 7, note: "" });
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteTelegram, setInviteTelegram] = useState("");
+  const [photoFiles, setPhotoFiles] = useState<Record<number, File | null>>({});
 
   const grouped = useMemo(() => {
     const map: Record<string, SurfSession[]> = {};
@@ -99,6 +111,15 @@ export function SurfCalendar({
                     }}
                   >
                     Reports
+                  </button>
+                  <button
+                    className="ghost"
+                    onClick={async () => {
+                      setOpenPhotosFor(openPhotosFor === session.id ? null : session.id);
+                      await onLoadPhotos(session.id);
+                    }}
+                  >
+                    Photos
                   </button>
                 </div>
                 <div className="invite-row">
@@ -191,6 +212,51 @@ export function SurfCalendar({
                           </p>
                           <p className="tiny">{report.note}</p>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {openPhotosFor === session.id ? (
+                  <div className="photo-area">
+                    <div className="photo-upload-row">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        onChange={(event) =>
+                          setPhotoFiles((prev) => ({
+                            ...prev,
+                            [session.id]: event.target.files?.[0] ?? null
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        disabled={
+                          photoUploadingIds.includes(session.id) || !photoFiles[session.id]
+                        }
+                        onClick={async () => {
+                          const file = photoFiles[session.id];
+                          if (!file) {
+                            return;
+                          }
+                          await onUploadPhoto(session.id, file);
+                          setPhotoFiles((prev) => ({ ...prev, [session.id]: null }));
+                        }}
+                      >
+                        {photoUploadingIds.includes(session.id) ? "Uploading..." : "Upload photo"}
+                      </button>
+                    </div>
+                    {photoLoadingIds.includes(session.id) ? (
+                      <p className="tiny">Loading photos...</p>
+                    ) : null}
+                    <div className="photo-grid">
+                      {(photosBySession[session.id] ?? []).map((photo) => (
+                        <a href={photo.public_url} target="_blank" rel="noreferrer" key={photo.id}>
+                          <img
+                            src={photo.public_url}
+                            alt={`Session photo by @${photo.uploaded_by_username}`}
+                          />
+                        </a>
                       ))}
                     </div>
                   </div>

@@ -5,6 +5,7 @@ import type {
   GroupCreatePayload,
   InboxItem,
   ReportCreatePayload,
+  SessionPhoto,
   SessionInvite,
   SessionCreatePayload,
   SessionReport,
@@ -20,6 +21,7 @@ const initialState: SurfState = {
   selectedGroupId: null,
   sessions: [],
   reportsBySession: {},
+  photosBySession: {},
   invitesBySession: {},
   invitesByGroup: {},
   inbox: [],
@@ -35,6 +37,8 @@ const initialState: SurfState = {
   loadingInbox: false,
   rsvpLoadingIds: [],
   reportLoadingIds: [],
+  photoLoadingIds: [],
+  photoUploadingIds: [],
   error: null
 };
 
@@ -125,6 +129,24 @@ export const fetchReports = createAsyncThunk("surf/fetchReports", async (session
   const response = await api.get<SessionReport[]>(`/surf/sessions/${sessionId}/reports`);
   return { sessionId, reports: response.data };
 });
+
+export const fetchSessionPhotos = createAsyncThunk(
+  "surf/fetchSessionPhotos",
+  async (sessionId: number) => {
+    const response = await api.get<SessionPhoto[]>(`/surf/sessions/${sessionId}/photos`);
+    return { sessionId, photos: response.data };
+  }
+);
+
+export const uploadSessionPhoto = createAsyncThunk(
+  "surf/uploadSessionPhoto",
+  async ({ sessionId, file }: { sessionId: number; file: File }) => {
+    const form = new FormData();
+    form.append("photo", file);
+    const response = await api.post<SessionPhoto>(`/surf/sessions/${sessionId}/photos`, form);
+    return response.data;
+  }
+);
 
 export const createReport = createAsyncThunk(
   "surf/createReport",
@@ -316,6 +338,35 @@ const surfSlice = createSlice({
       .addCase(createReport.rejected, (state, action) => {
         state.reportLoadingIds = state.reportLoadingIds.filter((id) => id !== action.meta.arg.sessionId);
         state.error = action.error.message ?? "Failed to save report";
+      })
+      .addCase(fetchSessionPhotos.pending, (state, action) => {
+        state.photoLoadingIds.push(action.meta.arg);
+      })
+      .addCase(fetchSessionPhotos.fulfilled, (state, action) => {
+        state.photoLoadingIds = state.photoLoadingIds.filter((id) => id !== action.payload.sessionId);
+        state.photosBySession[action.payload.sessionId] = action.payload.photos;
+      })
+      .addCase(fetchSessionPhotos.rejected, (state, action) => {
+        state.photoLoadingIds = state.photoLoadingIds.filter((id) => id !== action.meta.arg);
+        state.error = action.error.message ?? "Failed to load photos";
+      })
+      .addCase(uploadSessionPhoto.pending, (state, action) => {
+        state.photoUploadingIds.push(action.meta.arg.sessionId);
+      })
+      .addCase(uploadSessionPhoto.fulfilled, (state, action) => {
+        state.photoUploadingIds = state.photoUploadingIds.filter(
+          (id) => id !== action.payload.session_id
+        );
+        state.photosBySession[action.payload.session_id] = [
+          action.payload,
+          ...(state.photosBySession[action.payload.session_id] ?? [])
+        ];
+      })
+      .addCase(uploadSessionPhoto.rejected, (state, action) => {
+        state.photoUploadingIds = state.photoUploadingIds.filter(
+          (id) => id !== action.meta.arg.sessionId
+        );
+        state.error = action.error.message ?? "Failed to upload photo";
       });
   }
 });

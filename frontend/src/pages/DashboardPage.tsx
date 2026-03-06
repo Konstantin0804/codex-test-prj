@@ -17,11 +17,13 @@ import {
   fetchInbox,
   fetchGroups,
   fetchReports,
+  fetchSessionPhotos,
   fetchSessions,
   joinByInvite,
   markInboxRead,
   selectGroup,
   sendSessionInvite,
+  uploadSessionPhoto,
   setRsvp
 } from "../features/surf/surfSlice";
 import type { ReportCreatePayload, SessionCreatePayload } from "../features/surf/types";
@@ -36,6 +38,7 @@ export function DashboardPage() {
     selectedGroupId,
     sessions,
     reportsBySession,
+    photosBySession,
     invitesByGroup,
     inbox,
     loadingGroups,
@@ -50,6 +53,8 @@ export function DashboardPage() {
     acceptingInviteIds,
     rsvpLoadingIds,
     reportLoadingIds,
+    photoLoadingIds,
+    photoUploadingIds,
     error
   } = useAppSelector((state) => state.surf);
 
@@ -135,6 +140,14 @@ export function DashboardPage() {
     await dispatch(fetchReports(sessionId));
   };
 
+  const handleLoadPhotos = async (sessionId: number) => {
+    await dispatch(fetchSessionPhotos(sessionId));
+  };
+
+  const handleUploadPhoto = async (sessionId: number, file: File) => {
+    await dispatch(uploadSessionPhoto({ sessionId, file }));
+  };
+
   const handleSendInvite = async (
     sessionId: number,
     username?: string,
@@ -218,11 +231,16 @@ export function DashboardPage() {
                 rsvpLoadingIds={rsvpLoadingIds}
                 reportLoadingIds={reportLoadingIds}
                 reportsBySession={reportsBySession}
+                photosBySession={photosBySession}
                 sendingInvite={sendingSessionInvite}
+                photoLoadingIds={photoLoadingIds}
+                photoUploadingIds={photoUploadingIds}
                 onSendInvite={handleSendInvite}
                 onRsvp={handleRsvp}
                 onCreateReport={handleCreateReport}
                 onLoadReports={handleLoadReports}
+                onLoadPhotos={handleLoadPhotos}
+                onUploadPhoto={handleUploadPhoto}
               />
               <InboxPanel
                 items={inbox}
