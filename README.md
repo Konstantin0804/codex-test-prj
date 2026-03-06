@@ -15,6 +15,7 @@
 - Seed-данные для красивого первого запуска
 - GitHub Actions CI (backend tests + frontend build)
 - `render.yaml` для деплоя на Render
+- Готовый сценарий деплоя `Render (backend) + Cloudflare Pages (frontend) + Neon (db)`
 
 ## Локальный запуск
 
@@ -68,6 +69,7 @@ make up-neon
 - `backend/` — FastAPI + SQLAlchemy + Alembic
 - `docker-compose.yml` — оркестрация локально
 - `render.yaml` — деплой в Render
+- `DEPLOYMENT.md` — пошаговый прод-деплой (Render + Cloudflare + Neon)
 
 ## API
 
@@ -100,16 +102,13 @@ docker compose exec backend python scripts/seed.py
 - username: `demo`
 - password: `demo12345`
 
-## Бесплатный деплой (варианты)
+## Бесплатный деплой (рекомендуемый)
 
-1. **Render (весь стек)**
-   - Используй Blueprint из `render.yaml`
-   - Сервисы: Postgres (free), backend web (free), static frontend (free)
+- **Backend**: Render Web Service (Docker)
+- **Frontend**: Cloudflare Pages
+- **Database**: Neon Postgres
 
-2. **Vercel + Render + Neon/Supabase**
-   - Frontend: Vercel
-   - Backend: Render web service
-   - DB: Neon или Supabase Postgres free tier
+Подробная инструкция: [`DEPLOYMENT.md`](./DEPLOYMENT.md)
 
 ## Публикация в GitHub
 
