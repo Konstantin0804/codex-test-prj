@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { login, register } from "../features/auth/authSlice";
 import { api } from "../shared/api";
@@ -25,12 +25,24 @@ export function AuthPanel() {
   const [telegramUsername, setTelegramUsername] = useState("@");
   const [forgotUsername, setForgotUsername] = useState("");
   const [forgotTelegram, setForgotTelegram] = useState("@");
+  const [forgotLocked, setForgotLocked] = useState(false);
+  const [forgotCooldownSeconds, setForgotCooldownSeconds] = useState(0);
   const [resetToken] = useState(resetTokenFromUrl ?? "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [localStatus, setLocalStatus] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [openedTelegramStep, setOpenedTelegramStep] = useState(false);
+
+  useEffect(() => {
+    if (forgotCooldownSeconds <= 0) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setForgotCooldownSeconds((value) => Math.max(value - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [forgotCooldownSeconds]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -42,12 +54,17 @@ export function AuthPanel() {
       return;
     }
     if (mode === "forgot") {
+      if (forgotCooldownSeconds > 0) {
+        return;
+      }
       try {
         const response = await api.post<{ message: string }>("/auth/password/forgot", {
           username: forgotUsername,
           telegram_username: forgotTelegram
         });
-        setLocalStatus(response.data.message);
+        setLocalStatus(`${response.data.message} You can request another link in 15 seconds.`);
+        setForgotLocked(true);
+        setForgotCooldownSeconds(15);
       } catch (err: any) {
         setLocalError(err?.response?.data?.detail ?? "Failed to request password reset");
       }
@@ -83,6 +100,7 @@ export function AuthPanel() {
 
   const registerTelegramCore = telegramUsername.trim().replace(/^@/, "");
   const forgotTelegramCore = forgotTelegram.trim().replace(/^@/, "");
+  const forgotFieldsDisabled = forgotLocked || loading;
   const loginValid = username.trim().length >= 3 && password.length >= 8;
   const registerBaseValid =
     username.trim().length >= 3 &&
@@ -97,7 +115,7 @@ export function AuthPanel() {
       : mode === "register"
         ? !registerBaseValid
         : mode === "forgot"
-          ? !forgotValid
+          ? !forgotValid || forgotCooldownSeconds > 0
           : !resetValid);
   const mustOpenTelegram = mode === "register" && Boolean(registerBotLink);
   const continueDisabled = mustOpenTelegram && !openedTelegramStep;
@@ -167,6 +185,7 @@ export function AuthPanel() {
                 <input
                   value={forgotUsername}
                   onChange={(event) => setForgotUsername(event.target.value)}
+                  disabled={forgotFieldsDisabled}
                   required
                   minLength={3}
                 />
@@ -176,10 +195,14 @@ export function AuthPanel() {
                 <input
                   value={forgotTelegram}
                   onChange={(event) => setForgotTelegram(normalizeTelegramHandleInput(event.target.value))}
+                  disabled={forgotFieldsDisabled}
                   required
                   placeholder="@your_username"
                 />
               </label>
+              {forgotCooldownSeconds > 0 ? (
+                <p className="tiny">Please wait {forgotCooldownSeconds}s before requesting a new reset link.</p>
+              ) : null}
             </>
           ) : null}
           {mode === "reset" ? (
@@ -235,7 +258,11 @@ export function AuthPanel() {
                 className="ghost"
                 type="button"
                 disabled={continueDisabled}
-                onClick={() => setMode("login")}
+                onClick={() => {
+                  setMode("login");
+                  setForgotLocked(false);
+                  setForgotCooldownSeconds(0);
+                }}
               >
                 Continue to login
               </button>
@@ -258,6 +285,8 @@ export function AuthPanel() {
                   setMode("forgot");
                   setLocalError(null);
                   setLocalStatus(null);
+                  setForgotLocked(false);
+                  setForgotCooldownSeconds(0);
                 }}
               >
                 Forgot password?
@@ -270,7 +299,9 @@ export function AuthPanel() {
                 : mode === "register"
                   ? "Create account"
                   : mode === "forgot"
-                    ? "Send reset link"
+                    ? forgotCooldownSeconds > 0
+                      ? `Retry in ${forgotCooldownSeconds}s`
+                      : "Send reset link"
                     : "Save new password"}
             </button>
           )}
@@ -299,6 +330,8 @@ export function AuthPanel() {
             onClick={() => {
               setMode("login");
               setLocalError(null);
+              setForgotLocked(false);
+              setForgotCooldownSeconds(0);
             }}
           >
             Back to login
