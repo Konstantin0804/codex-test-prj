@@ -159,7 +159,11 @@ def list_friends(db: Session, user: User) -> list[User]:
 
 
 def list_registered_users(db: Session, current_user: User) -> list[User]:
-    stmt = select(User).where(User.id != current_user.id).order_by(User.username.asc())
+    stmt = (
+        select(User)
+        .where(User.id != current_user.id)
+        .order_by(User.created_at.desc(), User.id.desc())
+    )
     return list(db.scalars(stmt).all())
 
 

@@ -193,6 +193,12 @@ body {
   gap: 0.45rem;
 }
 
+.friends-users-list {
+  max-height: 196px;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
 .group-item {
   text-align: left;
   display: flex;

@@ -208,15 +208,14 @@ def get_bot_link(user: User) -> str | None:
     return link or None
 
 
-def _normalize_phone_es(value: str) -> str:
+def _normalize_phone_international(value: str) -> str:
     digits = re.sub(r"\D", "", value)
-    if len(digits) < 9:
+    if len(digits) < 6 or len(digits) > 15:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Phone number must contain at least 9 digits",
+            detail="Phone number must contain between 6 and 15 digits",
         )
-    local = digits[-9:]
-    return f"+34 {local[:3]}-{local[3:6]}-{local[6:9]}"
+    return f"+{digits}"
 
 
 def parse_favorite_spots(csv_value: str | None) -> list[str]:
@@ -246,7 +245,7 @@ def update_profile(
         user.surf_level = surf_level
     if phone_number is not None:
         cleaned_phone = phone_number.strip()
-        user.phone_number = _normalize_phone_es(cleaned_phone) if cleaned_phone else None
+        user.phone_number = _normalize_phone_international(cleaned_phone) if cleaned_phone else None
 
     if favorite_spots is not None:
         cleaned_spots = [item.strip() for item in favorite_spots if item.strip()]

@@ -101,8 +101,8 @@ export function FriendsPanel({ onOpenUser }: Props) {
             </label>
           </div>
           {message ? <p className="tiny">{message}</p> : null}
-          <div className="group-list">
-            {filteredUsers.slice(0, 12).map((user) => (
+          <div className="group-list friends-users-list">
+            {filteredUsers.map((user) => (
               <button
                 key={user.id}
                 className="group-item"

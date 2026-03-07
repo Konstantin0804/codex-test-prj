@@ -24,31 +24,14 @@ const LEVEL_LABELS: Record<SurfLevel, string> = {
   pro: "Pro"
 };
 
-function formatPhoneEs(value: string): string {
-  const raw = value.replace(/\D/g, "");
-  const digits = raw.startsWith("34") ? raw.slice(2, 11) : raw.slice(0, 9);
-  if (digits.length === 0) {
+function sanitizeInternationalPhoneInput(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
     return "";
   }
-  const g1 = digits.slice(0, 3);
-  const g2 = digits.slice(3, 6);
-  const g3 = digits.slice(6, 9);
-  let formatted = "+34";
-  if (g1) {
-    formatted += ` ${g1}`;
-  }
-  if (g2) {
-    formatted += `-${g2}`;
-  }
-  if (g3) {
-    formatted += `-${g3}`;
-  }
-  return formatted;
-}
-
-function getPhoneLocalDigits(value: string): string {
-  const raw = value.replace(/\D/g, "");
-  return raw.startsWith("34") ? raw.slice(2, 11) : raw.slice(0, 9);
+  const hasPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/\D/g, "").slice(0, 15);
+  return `${hasPlus ? "+" : ""}${digits}`;
 }
 
 interface Props {
@@ -85,7 +68,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         setCity(profile.city ?? "");
         setSurfboard(profile.surfboard ?? "");
         setSurfLevel(profile.surf_level ?? "");
-        setPhoneNumber(formatPhoneEs(profile.phone_number ?? ""));
+        setPhoneNumber(profile.phone_number ?? "");
         setFavoriteSpots(profile.favorite_spots ?? []);
         setAvatarUrl(profile.avatar_url ?? null);
         onAvatarChange(profile.avatar_url ?? null);
@@ -102,12 +85,14 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const validAge = age.trim().length === 0 || (Number.isFinite(ageNum) && ageNum >= 8 && ageNum <= 90);
   const validCity = city.trim().length === 0 || city.trim().length >= 2;
   const validBoard = surfboard.trim().length === 0 || surfboard.trim().length >= 2;
-  const phoneDigits = getPhoneLocalDigits(phoneNumber);
-  const validPhone = phoneNumber.trim().length === 0 || phoneDigits.length === 9;
+  const phoneDigits = phoneNumber.replace(/\D/g, "");
+  const validPhone =
+    phoneNumber.trim().length === 0 ||
+    (phoneNumber.trim().startsWith("+") && phoneDigits.length >= 6 && phoneDigits.length <= 15);
   const validFavoriteSpots = favoriteSpots.length <= 3;
   const canSubmit = validAge && validCity && validBoard && validPhone && validFavoriteSpots;
 
-  const normalizedPhonePreview = useMemo(() => formatPhoneEs(phoneNumber), [phoneNumber]);
+  const normalizedPhonePreview = useMemo(() => sanitizeInternationalPhoneInput(phoneNumber), [phoneNumber]);
   const filteredSpots = useMemo(() => {
     const query = spotQuery.trim().toLowerCase();
     return SURF_SPOTS.filter((spot) => {
@@ -283,8 +268,8 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
             Phone
             <input
               value={phoneNumber}
-              onChange={(event) => setPhoneNumber(formatPhoneEs(event.target.value))}
-              placeholder="+34 600-000-000"
+              onChange={(event) => setPhoneNumber(sanitizeInternationalPhoneInput(event.target.value))}
+              placeholder="+44 7700900123"
             />
           </label>
         </div>
@@ -292,7 +277,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
           <p className="tiny error-text">Surfboard: minimum 2 characters.</p>
         ) : null}
         {!validPhone && phoneNumber.length > 0 ? (
-          <p className="tiny error-text">Phone format: +34 600-000-000</p>
+          <p className="tiny error-text">Phone format: +[country code][number], 6-15 digits.</p>
         ) : null}
 
         <label>
