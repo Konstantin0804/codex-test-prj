@@ -394,7 +394,7 @@ export function DashboardPage() {
                   onSubmit={handleCreateSession}
                 />
                 <SurfCalendar
-                  currentUsername={username}
+                  currentUsername={username ?? ""}
                   sessions={sessions}
                   loading={loadingSessions}
                   rsvpLoadingIds={rsvpLoadingIds}
