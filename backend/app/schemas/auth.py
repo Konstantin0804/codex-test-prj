@@ -50,6 +50,7 @@ class ProfileRead(BaseModel):
     surfboard: str | None = None
     surf_level: SurfLevel | None = None
     phone_number: str | None = None
+    favorite_spots: list[str] = Field(default_factory=list)
 
 
 class ProfileUpdate(BaseModel):
@@ -59,3 +60,4 @@ class ProfileUpdate(BaseModel):
     surfboard: str = Field(min_length=2, max_length=140)
     surf_level: SurfLevel
     phone_number: str = Field(min_length=9, max_length=32)
+    favorite_spots: list[str] = Field(min_length=1, max_length=3)

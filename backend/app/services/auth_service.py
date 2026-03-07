@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.surf_spots import SURF_SPOT_NAMES
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.telegram import TelegramChatLink
 from app.models.user import User
@@ -151,6 +152,12 @@ def _normalize_phone_es(value: str) -> str:
     return f"+34 {local[:3]}-{local[3:6]}-{local[6:9]}"
 
 
+def parse_favorite_spots(csv_value: str | None) -> list[str]:
+    if not csv_value:
+        return []
+    return [item for item in csv_value.split("|") if item]
+
+
 def update_profile(
     db: Session,
     user: User,
@@ -161,13 +168,33 @@ def update_profile(
     surfboard: str,
     surf_level: str,
     phone_number: str,
+    favorite_spots: list[str],
 ) -> User:
+    cleaned_spots = [item.strip() for item in favorite_spots if item.strip()]
+    if len(cleaned_spots) == 0 or len(cleaned_spots) > 3:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Favorite spots must contain between 1 and 3 items",
+        )
+    if len(set(cleaned_spots)) != len(cleaned_spots):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Favorite spots should not contain duplicates",
+        )
+    invalid = [item for item in cleaned_spots if item not in SURF_SPOT_NAMES]
+    if invalid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unknown surf spot: {invalid[0]}",
+        )
+
     user.nickname = nickname.strip()
     user.age = age
     user.city = city.strip()
     user.surfboard = surfboard.strip()
     user.surf_level = surf_level
     user.phone_number = _normalize_phone_es(phone_number)
+    user.favorite_spots_csv = "|".join(cleaned_spots)
     db.add(user)
     db.commit()
     db.refresh(user)

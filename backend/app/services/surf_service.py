@@ -6,6 +6,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
+from app.core.surf_spots import SURF_SPOT_NAMES
 from app.models.surf import (
     GroupInvite,
     GroupMembership,
@@ -194,6 +195,8 @@ def join_by_code(db: Session, code: str, user: User) -> SurfGroup:
 
 def create_session(db: Session, group_id: int, payload: SessionCreate, user: User) -> SurfSession:
     require_membership(db, group_id, user)
+    if payload.spot_name not in SURF_SPOT_NAMES:
+        raise HTTPException(status_code=422, detail="Unknown surf spot. Select one from the list.")
     session = SurfSession(group_id=group_id, created_by=user.id, **payload.model_dump())
     db.add(session)
     db.commit()

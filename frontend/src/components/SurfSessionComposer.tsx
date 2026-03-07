@@ -1,5 +1,6 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type { FriendSummary, SessionLevel } from "../features/surf/types";
+import { SURF_SPOTS, findSurfSpotByName } from "../shared/surfSpots";
 
 interface Props {
   disabled: boolean;
@@ -39,18 +40,30 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
   const finalInviteUsernames = Array.from(new Set([...typedUsernames, ...selectedFriendUsernames]));
   const previewUsers = finalInviteUsernames.map((username) => `@${username}`);
   const previewTelegrams = typedTelegrams.map((username) => `@${username}`);
-  const isSpotValid = spotName.trim().length >= 2;
+  const selectedSpot = findSurfSpotByName(spotName);
+  const isSpotValid = Boolean(selectedSpot);
   const isDateValid = Boolean(sessionDate);
   const isTimeValid = Boolean(meetingTime);
   const isSubmitValid = isSpotValid && isDateValid && isTimeValid;
+  const spotSuggestions = useMemo(() => {
+    const query = spotName.trim().toLowerCase();
+    return SURF_SPOTS.filter((spot) => {
+      if (!query) {
+        return true;
+      }
+      return (
+        spot.name.toLowerCase().includes(query) || spot.region.toLowerCase().includes(query)
+      );
+    }).slice(0, 8);
+  }, [spotName]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!spotName.trim()) {
+    if (!selectedSpot) {
       return;
     }
     await onSubmit({
-      spot_name: spotName.trim(),
+      spot_name: selectedSpot!.name,
       session_date: sessionDate,
       meeting_time: meetingTime || null,
       level,
@@ -78,10 +91,34 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
       <h2>Plan Session</h2>
       <label>
         Spot *
-        <input value={spotName} onChange={(event) => setSpotName(event.target.value)} />
+        <input
+          value={spotName}
+          onChange={(event) => setSpotName(event.target.value)}
+          placeholder="Start typing to search spots..."
+        />
       </label>
+      {selectedSpot ? (
+        <p className="tiny">
+          <em>{selectedSpot.region}</em>
+        </p>
+      ) : null}
+      <div className="spot-suggest">
+        {spotSuggestions.map((spot) => (
+          <button
+            key={spot.name}
+            type="button"
+            className={`spot-option ${spot.name === selectedSpot?.name ? "active" : ""}`}
+            onClick={() => setSpotName(spot.name)}
+          >
+            <span>{spot.name}</span>
+            <span className="spot-option-meta">
+              <em>{spot.region}</em>
+            </span>
+          </button>
+        ))}
+      </div>
       {spotName.trim().length > 0 && !isSpotValid ? (
-        <p className="tiny error-text">Minimum 2 characters.</p>
+        <p className="tiny error-text">Select a spot from the list.</p>
       ) : null}
       <div className="row-3">
         <label>

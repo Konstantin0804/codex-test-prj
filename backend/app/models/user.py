@@ -23,5 +23,6 @@ class User(Base):
     surfboard: Mapped[str | None] = mapped_column(String(140), nullable=True)
     surf_level: Mapped[str | None] = mapped_column(String(24), nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    favorite_spots_csv: Mapped[str | None] = mapped_column(String(512), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

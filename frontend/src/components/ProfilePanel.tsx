@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../shared/api";
+import { SURF_SPOTS } from "../shared/surfSpots";
 
 type SurfLevel = "beginner" | "beginner_plus" | "intermediate" | "advanced" | "pro";
 
@@ -11,6 +12,7 @@ interface Profile {
   surfboard: string | null;
   surf_level: SurfLevel | null;
   phone_number: string | null;
+  favorite_spots: string[];
 }
 
 const LEVEL_LABELS: Record<SurfLevel, string> = {
@@ -55,6 +57,8 @@ export function ProfilePanel() {
   const [surfboard, setSurfboard] = useState("");
   const [surfLevel, setSurfLevel] = useState<SurfLevel>("beginner");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [favoriteSpots, setFavoriteSpots] = useState<string[]>([]);
+  const [spotQuery, setSpotQuery] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -68,6 +72,7 @@ export function ProfilePanel() {
         setSurfboard(profile.surfboard ?? "");
         setSurfLevel(profile.surf_level ?? "beginner");
         setPhoneNumber(profile.phone_number ?? "");
+        setFavoriteSpots(profile.favorite_spots ?? []);
       } catch {
         setError("Failed to load profile");
       } finally {
@@ -84,9 +89,38 @@ export function ProfilePanel() {
   const validBoard = surfboard.trim().length >= 2;
   const phoneDigits = phoneNumber.replace(/\D/g, "");
   const validPhone = phoneDigits.length === 11 && phoneNumber.startsWith("+34");
-  const canSubmit = validNickname && validAge && validCity && validBoard && validPhone;
+  const validFavoriteSpots = favoriteSpots.length >= 1 && favoriteSpots.length <= 3;
+  const canSubmit =
+    validNickname && validAge && validCity && validBoard && validPhone && validFavoriteSpots;
 
   const normalizedPhonePreview = useMemo(() => formatPhoneEs(phoneNumber), [phoneNumber]);
+  const filteredSpots = useMemo(() => {
+    const query = spotQuery.trim().toLowerCase();
+    return SURF_SPOTS.filter((spot) => {
+      if (favoriteSpots.includes(spot.name)) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return (
+        spot.name.toLowerCase().includes(query) ||
+        spot.region.toLowerCase().includes(query)
+      );
+    }).slice(0, 8);
+  }, [spotQuery, favoriteSpots]);
+
+  const addFavoriteSpot = (spotName: string) => {
+    if (favoriteSpots.includes(spotName) || favoriteSpots.length >= 3) {
+      return;
+    }
+    setFavoriteSpots((prev) => [...prev, spotName]);
+    setSpotQuery("");
+  };
+
+  const removeFavoriteSpot = (spotName: string) => {
+    setFavoriteSpots((prev) => prev.filter((item) => item !== spotName));
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -104,7 +138,8 @@ export function ProfilePanel() {
         city: city.trim(),
         surfboard: surfboard.trim(),
         surf_level: surfLevel,
-        phone_number: normalizedPhonePreview
+        phone_number: normalizedPhonePreview,
+        favorite_spots: favoriteSpots
       });
       setPhoneNumber(normalizedPhonePreview);
       setSuccess("Profile saved");
@@ -195,6 +230,43 @@ export function ProfilePanel() {
         ) : null}
         {!validPhone && phoneNumber.length > 0 ? (
           <p className="tiny error-text">Phone format: +34 647-757-606</p>
+        ) : null}
+        <label>
+          TOP 3 favorite spots * (1-3)
+          <input
+            value={spotQuery}
+            onChange={(event) => setSpotQuery(event.target.value)}
+            placeholder="Start typing spot name..."
+            disabled={favoriteSpots.length >= 3}
+          />
+        </label>
+        <div className="chip-row">
+          {favoriteSpots.map((spot) => (
+            <button key={spot} type="button" className="ghost" onClick={() => removeFavoriteSpot(spot)}>
+              {spot} x
+            </button>
+          ))}
+        </div>
+        {spotQuery.trim().length > 0 && favoriteSpots.length < 3 ? (
+          <div className="spot-suggest">
+            {filteredSpots.length === 0 ? <p className="tiny">No matching spots.</p> : null}
+            {filteredSpots.map((spot) => (
+              <button
+                key={spot.name}
+                type="button"
+                className="spot-option"
+                onClick={() => addFavoriteSpot(spot.name)}
+              >
+                <span>{spot.name}</span>
+                <span className="spot-option-meta">
+                  <em>{spot.region}</em>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {!validFavoriteSpots ? (
+          <p className="tiny error-text">Choose 1 to 3 favorite spots.</p>
         ) : null}
 
         {error ? <p className="error">{error}</p> : null}

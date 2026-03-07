@@ -19,6 +19,7 @@ from app.services.auth_service import (
     create_user,
     get_bot_link,
     issue_token,
+    parse_favorite_spots,
     trigger_telegram_verification,
     update_profile,
 )
@@ -70,6 +71,7 @@ def get_profile(current_user: User = Depends(get_current_user)) -> ProfileRead:
         surfboard=current_user.surfboard,
         surf_level=current_user.surf_level,
         phone_number=current_user.phone_number,
+        favorite_spots=parse_favorite_spots(current_user.favorite_spots_csv),
     )
 
 
@@ -88,6 +90,7 @@ def patch_profile(
         surfboard=payload.surfboard,
         surf_level=payload.surf_level,
         phone_number=payload.phone_number,
+        favorite_spots=payload.favorite_spots,
     )
     return ProfileRead(
         nickname=updated.nickname,
@@ -97,4 +100,5 @@ def patch_profile(
         surfboard=updated.surfboard,
         surf_level=updated.surf_level,
         phone_number=updated.phone_number,
+        favorite_spots=parse_favorite_spots(updated.favorite_spots_csv),
     )
