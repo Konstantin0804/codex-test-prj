@@ -292,7 +292,7 @@ export function AuthPanel() {
                 Forgot password?
               </button>
             </div>
-          ) : (
+          ) : mode === "register" && registerBotLink ? null : (
             <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
               {loading
                 ? "Please wait..."
