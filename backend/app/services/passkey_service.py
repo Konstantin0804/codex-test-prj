@@ -92,9 +92,9 @@ def begin_passkey_registration(db: Session, user: User) -> dict:
         user_name=user.username,
         user_display_name=user.username,
         timeout=60000,
-        user_verification=UserVerificationRequirement.PREFERRED,
         authenticator_selection=AuthenticatorSelectionCriteria(
-            resident_key=ResidentKeyRequirement.PREFERRED
+            resident_key=ResidentKeyRequirement.PREFERRED,
+            user_verification=UserVerificationRequirement.PREFERRED,
         ),
         exclude_credentials=exclude_descriptors,
     )
