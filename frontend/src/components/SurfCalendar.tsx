@@ -1,7 +1,8 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { SessionFeedback, SessionPhoto, SessionReport, SurfSession } from "../features/surf/types";
 
 interface Props {
+  currentUsername: string;
   sessions: SurfSession[];
   loading: boolean;
   rsvpLoadingIds: number[];
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function SurfCalendar({
+  currentUsername,
   sessions,
   loading,
   rsvpLoadingIds,
@@ -61,9 +63,23 @@ export function SurfCalendar({
     stars: null,
     comment: ""
   });
+  const [feedbackEditedFor, setFeedbackEditedFor] = useState<number | null>(null);
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteTelegram, setInviteTelegram] = useState("");
   const [photoFiles, setPhotoFiles] = useState<Record<number, File | null>>({});
+
+  useEffect(() => {
+    if (openFeedbackFor === null || feedbackEditedFor === openFeedbackFor) {
+      return;
+    }
+    const mine = (feedbackBySession[openFeedbackFor] ?? []).find(
+      (item) => item.username === currentUsername
+    );
+    setFeedbackForm({
+      stars: mine?.stars ?? null,
+      comment: mine?.comment ?? ""
+    });
+  }, [openFeedbackFor, feedbackBySession, currentUsername, feedbackEditedFor]);
 
   const groupByDate = (items: SurfSession[]) => {
     const map: Record<string, SurfSession[]> = {};
@@ -158,6 +174,18 @@ export function SurfCalendar({
                     onClick={async () => {
                       const next = openFeedbackFor === session.id ? null : session.id;
                       setOpenFeedbackFor(next);
+                      setFeedbackEditedFor(null);
+                      if (next === null) {
+                        setFeedbackForm({ stars: null, comment: "" });
+                        return;
+                      }
+                      const mine = (feedbackBySession[session.id] ?? []).find(
+                        (item) => item.username === currentUsername
+                      );
+                      setFeedbackForm({
+                        stars: mine?.stars ?? null,
+                        comment: mine?.comment ?? ""
+                      });
                       if (next !== null) {
                         await onLoadFeedback(session.id);
                       }
@@ -182,7 +210,7 @@ export function SurfCalendar({
                       onSubmit={async (event) => {
                         event.preventDefault();
                         await onSubmitFeedback(session.id, feedbackForm.stars, feedbackForm.comment);
-                        setFeedbackForm({ stars: null, comment: "" });
+                        setFeedbackEditedFor(null);
                       }}
                       className="report-form"
                     >
@@ -192,10 +220,13 @@ export function SurfCalendar({
                           <select
                             value={feedbackForm.stars === null ? "" : String(feedbackForm.stars)}
                             onChange={(event) =>
-                              setFeedbackForm((prev) => ({
-                                ...prev,
-                                stars: event.target.value === "" ? null : Number(event.target.value)
-                              }))
+                              {
+                                setFeedbackEditedFor(session.id);
+                                setFeedbackForm((prev) => ({
+                                  ...prev,
+                                  stars: event.target.value === "" ? null : Number(event.target.value)
+                                }));
+                              }
                             }
                           >
                             <option value="">No stars</option>
@@ -212,7 +243,10 @@ export function SurfCalendar({
                           <input
                             value={feedbackForm.comment}
                             onChange={(event) =>
-                              setFeedbackForm((prev) => ({ ...prev, comment: event.target.value }))
+                              {
+                                setFeedbackEditedFor(session.id);
+                                setFeedbackForm((prev) => ({ ...prev, comment: event.target.value }));
+                              }
                             }
                             placeholder="Optional note"
                           />
