@@ -68,7 +68,9 @@ export function InboxPanel({
             title={expanded ? "Collapse" : "Expand"}
             onClick={() => setOpen((value) => !value)}
           >
-            {expanded ? "⌃" : "⌄"}
+            <span className={`icon-chevron ${expanded ? "up" : ""}`} aria-hidden="true">
+              ˅
+            </span>
           </button>
         ) : null}
       </div>
