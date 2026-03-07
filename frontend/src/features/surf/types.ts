@@ -87,6 +87,11 @@ export interface InboxItem {
   body: string;
   is_read: boolean;
   related_invite_id: number | null;
+  related_friend_request_id: number | null;
+  related_group_id: number | null;
+  related_session_id: number | null;
+  related_user_id: number | null;
+  related_username: string | null;
   created_at: string;
 }
 
@@ -133,6 +138,7 @@ export interface SurfState {
   creatingInvite: boolean;
   sendingSessionInvite: boolean;
   acceptingInviteIds: number[];
+  decliningInviteIds: number[];
   loadingInbox: boolean;
   rsvpLoadingIds: number[];
   reportLoadingIds: number[];

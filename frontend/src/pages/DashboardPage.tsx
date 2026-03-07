@@ -15,6 +15,7 @@ import { logout, logoutSession } from "../features/auth/authSlice";
 import { api } from "../shared/api";
 import {
   acceptInvite,
+  declineInvite,
   createGroup,
   createInvite,
   createReport,
@@ -46,6 +47,7 @@ export function DashboardPage() {
   const [profileModalUsername, setProfileModalUsername] = useState<string | null>(null);
   const [crewModalGroupId, setCrewModalGroupId] = useState<number | null>(null);
   const [sessionDetailId, setSessionDetailId] = useState<number | null>(null);
+  const [inboxDetailsOpen, setInboxDetailsOpen] = useState(false);
   const {
     groups,
     friends,
@@ -66,6 +68,7 @@ export function DashboardPage() {
     creatingInvite,
     sendingSessionInvite,
     acceptingInviteIds,
+    decliningInviteIds,
     rsvpLoadingIds,
     reportLoadingIds,
     feedbackLoadingIds,
@@ -233,6 +236,22 @@ export function DashboardPage() {
     await dispatch(fetchInbox());
   };
 
+  const handleDeclineInvite = async (inviteId: number) => {
+    await dispatch(declineInvite(inviteId));
+    await dispatch(fetchInbox());
+  };
+
+  const handleAcceptFriendRequest = async (requestId: number) => {
+    await api.post(`/surf/friends/requests/${requestId}/accept`);
+    await dispatch(fetchFriends());
+    await dispatch(fetchInbox());
+  };
+
+  const handleDeclineFriendRequest = async (requestId: number) => {
+    await api.post(`/surf/friends/requests/${requestId}/decline`);
+    await dispatch(fetchInbox());
+  };
+
   const handleMarkInboxRead = async (itemId: number) => {
     await dispatch(markInboxRead(itemId));
   };
@@ -291,80 +310,112 @@ export function DashboardPage() {
       {profileModalUsername ? (
         <UserProfileModal username={profileModalUsername} onClose={() => setProfileModalUsername(null)} />
       ) : null}
-      <section className="surf-layout">
-        <div className="sidebar-stack">
-          <SurfGroupPanel
-            groups={groups}
-            selectedGroupId={selectedGroupId}
-            invitesByGroup={invitesByGroup}
-            creatingGroup={creatingGroup}
-            joiningByCode={joiningByCode}
-            creatingInvite={creatingInvite}
-            onSelectGroup={(id) => dispatch(selectGroup(id))}
-            onCreateGroup={handleCreateGroup}
-            onJoinByCode={handleJoinByCode}
-            onCreateInvite={async (groupId) => {
-              await dispatch(createInvite(groupId));
+      {inboxDetailsOpen ? (
+        <section className="inbox-page-wrap">
+          <InboxPanel
+            detailed
+            items={inbox}
+            loading={loadingInbox}
+            acceptingInviteIds={acceptingInviteIds}
+            decliningInviteIds={decliningInviteIds}
+            onRefresh={async () => {
+              await dispatch(fetchInbox());
             }}
-            onOpenGroupDetail={(groupId) => setCrewModalGroupId(groupId)}
+            onAcceptInvite={handleAcceptInvite}
+            onDeclineInvite={handleDeclineInvite}
+            onAcceptFriendRequest={handleAcceptFriendRequest}
+            onDeclineFriendRequest={handleDeclineFriendRequest}
+            onMarkRead={handleMarkInboxRead}
+            onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
+            onOpenGroup={(groupId) => setCrewModalGroupId(groupId)}
+            onOpenSession={(sessionId) => setSessionDetailId(sessionId)}
+            onCloseDetailsPage={() => setInboxDetailsOpen(false)}
           />
-          <FriendsPanel onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)} />
-        </div>
-
-        <section className="surf-main">
-          {loadingGroups ? <p className="status">Loading groups...</p> : null}
-          {!selectedGroupId ? (
-            <article className="card empty-block">
-              <h3>No group selected</h3>
-              <p>Create or join a group to start planning surf sessions.</p>
-            </article>
-          ) : (
-            <>
-              <SurfSessionComposer
-                disabled={creatingSession}
-                friends={friends}
-                loadingFriends={loadingFriends}
-                onSubmit={handleCreateSession}
-              />
-              <SurfCalendar
-                currentUsername={username}
-                sessions={sessions}
-                loading={loadingSessions}
-                rsvpLoadingIds={rsvpLoadingIds}
-                reportLoadingIds={reportLoadingIds}
-                reportsBySession={reportsBySession}
-                feedbackBySession={feedbackBySession}
-                photosBySession={photosBySession}
-                sendingInvite={sendingSessionInvite}
-                feedbackLoadingIds={feedbackLoadingIds}
-                feedbackSavingIds={feedbackSavingIds}
-                completingSessionIds={completingSessionIds}
-                photoLoadingIds={photoLoadingIds}
-                photoUploadingIds={photoUploadingIds}
-                onSendInvite={handleSendInvite}
-                onRsvp={handleRsvp}
-                onCompleteSession={handleCompleteSession}
-                onCreateReport={handleCreateReport}
-                onLoadReports={handleLoadReports}
-                onLoadFeedback={handleLoadFeedback}
-                onSubmitFeedback={handleSubmitFeedback}
-                onLoadPhotos={handleLoadPhotos}
-                onUploadPhoto={handleUploadPhoto}
-              />
-              <InboxPanel
-                items={inbox}
-                loading={loadingInbox}
-                acceptingInviteIds={acceptingInviteIds}
-                onRefresh={async () => {
-                  await dispatch(fetchInbox());
-                }}
-                onAcceptInvite={handleAcceptInvite}
-                onMarkRead={handleMarkInboxRead}
-              />
-            </>
-          )}
         </section>
-      </section>
+      ) : (
+        <section className="surf-layout">
+          <div className="sidebar-stack">
+            <SurfGroupPanel
+              groups={groups}
+              selectedGroupId={selectedGroupId}
+              invitesByGroup={invitesByGroup}
+              creatingGroup={creatingGroup}
+              joiningByCode={joiningByCode}
+              creatingInvite={creatingInvite}
+              onSelectGroup={(id) => dispatch(selectGroup(id))}
+              onCreateGroup={handleCreateGroup}
+              onJoinByCode={handleJoinByCode}
+              onCreateInvite={async (groupId) => {
+                await dispatch(createInvite(groupId));
+              }}
+              onOpenGroupDetail={(groupId) => setCrewModalGroupId(groupId)}
+            />
+            <FriendsPanel onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)} />
+          </div>
+
+          <section className="surf-main">
+            {loadingGroups ? <p className="status">Loading groups...</p> : null}
+            {!selectedGroupId ? (
+              <article className="card empty-block">
+                <h3>No group selected</h3>
+                <p>Create or join a group to start planning surf sessions.</p>
+              </article>
+            ) : (
+              <>
+                <SurfSessionComposer
+                  disabled={creatingSession}
+                  friends={friends}
+                  loadingFriends={loadingFriends}
+                  onSubmit={handleCreateSession}
+                />
+                <SurfCalendar
+                  currentUsername={username}
+                  sessions={sessions}
+                  loading={loadingSessions}
+                  rsvpLoadingIds={rsvpLoadingIds}
+                  reportLoadingIds={reportLoadingIds}
+                  reportsBySession={reportsBySession}
+                  feedbackBySession={feedbackBySession}
+                  photosBySession={photosBySession}
+                  sendingInvite={sendingSessionInvite}
+                  feedbackLoadingIds={feedbackLoadingIds}
+                  feedbackSavingIds={feedbackSavingIds}
+                  completingSessionIds={completingSessionIds}
+                  photoLoadingIds={photoLoadingIds}
+                  photoUploadingIds={photoUploadingIds}
+                  onSendInvite={handleSendInvite}
+                  onRsvp={handleRsvp}
+                  onCompleteSession={handleCompleteSession}
+                  onCreateReport={handleCreateReport}
+                  onLoadReports={handleLoadReports}
+                  onLoadFeedback={handleLoadFeedback}
+                  onSubmitFeedback={handleSubmitFeedback}
+                  onLoadPhotos={handleLoadPhotos}
+                  onUploadPhoto={handleUploadPhoto}
+                />
+                <InboxPanel
+                  items={inbox}
+                  loading={loadingInbox}
+                  acceptingInviteIds={acceptingInviteIds}
+                  decliningInviteIds={decliningInviteIds}
+                  onRefresh={async () => {
+                    await dispatch(fetchInbox());
+                  }}
+                  onAcceptInvite={handleAcceptInvite}
+                  onDeclineInvite={handleDeclineInvite}
+                  onAcceptFriendRequest={handleAcceptFriendRequest}
+                  onDeclineFriendRequest={handleDeclineFriendRequest}
+                  onMarkRead={handleMarkInboxRead}
+                  onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
+                  onOpenGroup={(groupId) => setCrewModalGroupId(groupId)}
+                  onOpenSession={(sessionId) => setSessionDetailId(sessionId)}
+                  onOpenDetailsPage={() => setInboxDetailsOpen(true)}
+                />
+              </>
+            )}
+          </section>
+        </section>
+      )}
     </main>
   );
 }

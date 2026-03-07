@@ -209,4 +209,9 @@ class InboxItemRead(BaseModel):
     body: str
     is_read: bool
     related_invite_id: int | None
+    related_friend_request_id: int | None = None
+    related_group_id: int | None = None
+    related_session_id: int | None = None
+    related_user_id: int | None = None
+    related_username: str | None = None
     created_at: datetime

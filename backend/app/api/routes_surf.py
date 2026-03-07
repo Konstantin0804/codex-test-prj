@@ -58,6 +58,8 @@ from app.services.surf_service import (
     mark_inbox_read,
     my_rsvp_map,
     resend_friend_request,
+    decline_friend_request,
+    decline_session_invite,
     session_rating_summary_map,
     add_session_photo,
     set_rsvp,
@@ -220,6 +222,25 @@ def post_resend_friend_request(
         to_username=to_user.username if to_user else "",
         status=request.status,
         direction="outgoing",
+        created_at=request.created_at,
+    )
+
+
+@router.post("/friends/requests/{request_id}/decline", response_model=FriendRequestRead)
+def post_decline_friend_request(
+    request_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> FriendRequestRead:
+    request = decline_friend_request(db, request_id, current_user)
+    from_user = db.get(User, request.from_user_id)
+    to_user = db.get(User, request.to_user_id)
+    return FriendRequestRead(
+        id=request.id,
+        from_username=from_user.username if from_user else "",
+        to_username=to_user.username if to_user else "",
+        status=request.status,
+        direction="incoming",
         created_at=request.created_at,
     )
 
@@ -627,24 +648,57 @@ def post_accept_invite(
     )
 
 
+@router.post("/invites/{invite_id}/decline", response_model=SessionInviteRead)
+def post_decline_invite(
+    invite_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionInviteRead:
+    invite = decline_session_invite(db, invite_id, current_user)
+    invited_username = None
+    if invite.invited_user_id:
+        user = db.get(User, invite.invited_user_id)
+        invited_username = user.username if user else None
+    return SessionInviteRead(
+        id=invite.id,
+        session_id=invite.session_id,
+        status=invite.status,
+        invited_username=invited_username,
+        invited_telegram_username=invite.invited_telegram_username,
+        invite_token=invite.invite_token,
+        created_at=invite.created_at,
+    )
+
+
 @router.get("/inbox", response_model=list[InboxItemRead])
 def get_inbox(
     db: Session = Depends(get_db_dep),
     current_user: User = Depends(get_current_user),
 ) -> list[InboxItemRead]:
     items = list_inbox_items(db, current_user)
-    return [
-        InboxItemRead(
-            id=item.id,
-            item_type=item.item_type,
-            title=item.title,
-            body=item.body,
-            is_read=item.is_read,
-            related_invite_id=item.related_invite_id,
-            created_at=item.created_at,
+    rows: list[InboxItemRead] = []
+    for item in items:
+        related_username = None
+        if item.related_user_id:
+            related_user = db.get(User, item.related_user_id)
+            related_username = related_user.username if related_user else None
+        rows.append(
+            InboxItemRead(
+                id=item.id,
+                item_type=item.item_type,
+                title=item.title,
+                body=item.body,
+                is_read=item.is_read,
+                related_invite_id=item.related_invite_id,
+                related_friend_request_id=item.related_friend_request_id,
+                related_group_id=item.related_group_id,
+                related_session_id=item.related_session_id,
+                related_user_id=item.related_user_id,
+                related_username=related_username,
+                created_at=item.created_at,
+            )
         )
-        for item in items
-    ]
+    return rows
 
 
 @router.patch("/inbox/{item_id}/read", response_model=InboxItemRead)
@@ -654,6 +708,10 @@ def patch_inbox_read(
     current_user: User = Depends(get_current_user),
 ) -> InboxItemRead:
     item = mark_inbox_read(db, item_id, current_user)
+    related_username = None
+    if item.related_user_id:
+        related_user = db.get(User, item.related_user_id)
+        related_username = related_user.username if related_user else None
     return InboxItemRead(
         id=item.id,
         item_type=item.item_type,
@@ -661,5 +719,10 @@ def patch_inbox_read(
         body=item.body,
         is_read=item.is_read,
         related_invite_id=item.related_invite_id,
+        related_friend_request_id=item.related_friend_request_id,
+        related_group_id=item.related_group_id,
+        related_session_id=item.related_session_id,
+        related_user_id=item.related_user_id,
+        related_username=related_username,
         created_at=item.created_at,
     )

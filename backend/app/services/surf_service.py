@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
@@ -74,6 +74,10 @@ def create_inbox_item(
     title: str,
     body: str,
     related_invite_id: int | None = None,
+    related_friend_request_id: int | None = None,
+    related_group_id: int | None = None,
+    related_session_id: int | None = None,
+    related_user_id: int | None = None,
 ) -> InboxItem:
     item = InboxItem(
         user_id=user_id,
@@ -81,6 +85,10 @@ def create_inbox_item(
         title=title,
         body=body,
         related_invite_id=related_invite_id,
+        related_friend_request_id=related_friend_request_id,
+        related_group_id=related_group_id,
+        related_session_id=related_session_id,
+        related_user_id=related_user_id,
     )
     db.add(item)
     db.flush()
@@ -197,7 +205,13 @@ def _resolve_chat_id(db: Session, user: User) -> int | None:
     return int(chat_link.chat_id)
 
 
-def _notify_friend_request(db: Session, from_user: User, to_user: User, is_resend: bool = False) -> None:
+def _notify_friend_request(
+    db: Session,
+    from_user: User,
+    to_user: User,
+    request_id: int | None = None,
+    is_resend: bool = False,
+) -> None:
     title = "Friend request reminder" if is_resend else "New friend request"
     body = (
         f"@{from_user.username} sent your friend request again."
@@ -210,6 +224,8 @@ def _notify_friend_request(db: Session, from_user: User, to_user: User, is_resen
         "friend_request",
         title,
         body,
+        related_friend_request_id=request_id,
+        related_user_id=from_user.id,
     )
     chat_id = _resolve_chat_id(db, to_user)
     if chat_id:
@@ -245,7 +261,7 @@ def create_friend_request(db: Session, current_user: User, to_username: str) -> 
         )
     )
     if existing_direct:
-        _notify_friend_request(db, current_user, target, is_resend=True)
+        _notify_friend_request(db, current_user, target, request_id=existing_direct.id, is_resend=True)
         db.commit()
         db.refresh(existing_direct)
         return existing_direct
@@ -268,7 +284,8 @@ def create_friend_request(db: Session, current_user: User, to_username: str) -> 
 
     request = FriendRequest(from_user_id=current_user.id, to_user_id=target.id, status=FriendRequestStatus.pending)
     db.add(request)
-    _notify_friend_request(db, current_user, target)
+    db.flush()
+    _notify_friend_request(db, current_user, target, request_id=request.id)
     db.commit()
     db.refresh(request)
     return request
@@ -300,7 +317,7 @@ def resend_friend_request(db: Session, request_id: int, current_user: User) -> F
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
 
-    _notify_friend_request(db, current_user, target, is_resend=True)
+    _notify_friend_request(db, current_user, target, request_id=request.id, is_resend=True)
     db.commit()
     db.refresh(request)
     return request
@@ -310,6 +327,8 @@ def accept_friend_request(db: Session, request_id: int, current_user: User) -> F
     request = db.get(FriendRequest, request_id)
     if not request or request.to_user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Friend request not found")
+    if request.status == FriendRequestStatus.accepted:
+        return request
     if request.status != FriendRequestStatus.pending:
         raise HTTPException(status_code=400, detail="Friend request is not pending")
 
@@ -329,6 +348,8 @@ def accept_friend_request(db: Session, request_id: int, current_user: User) -> F
         "friend_request_accepted",
         "Friend request accepted",
         f"@{current_user.username} accepted your friend request.",
+        related_friend_request_id=request.id,
+        related_user_id=current_user.id,
     )
     requester = db.get(User, request.from_user_id)
     if requester:
@@ -338,6 +359,50 @@ def accept_friend_request(db: Session, request_id: int, current_user: User) -> F
                 chat_id,
                 f"@{current_user.username} accepted your friend request in SurfCrew Planner.",
             )
+    db.commit()
+    db.refresh(request)
+    return request
+
+
+def decline_friend_request(db: Session, request_id: int, current_user: User) -> FriendRequest:
+    request = db.get(FriendRequest, request_id)
+    if not request or request.to_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Friend request not found")
+    if request.status == FriendRequestStatus.declined:
+        return request
+    if request.status != FriendRequestStatus.pending:
+        raise HTTPException(status_code=400, detail="Friend request is not pending")
+
+    request.status = FriendRequestStatus.declined
+    request.acted_at = _now()
+    db.add(request)
+    create_inbox_item(
+        db,
+        request.from_user_id,
+        "friend_request_declined",
+        "Friend request declined",
+        f"@{current_user.username} declined your friend request.",
+        related_friend_request_id=request.id,
+        related_user_id=current_user.id,
+    )
+    requester = db.get(User, request.from_user_id)
+    if requester:
+        chat_id = _resolve_chat_id(db, requester)
+        if chat_id:
+            send_message(
+                chat_id,
+                f"@{current_user.username} declined your friend request in SurfCrew Planner.",
+            )
+
+    db.execute(
+        update(InboxItem)
+        .where(
+            InboxItem.user_id == current_user.id,
+            InboxItem.related_friend_request_id == request.id,
+            InboxItem.item_type == "friend_request",
+        )
+        .values(is_read=True)
+    )
     db.commit()
     db.refresh(request)
     return request
@@ -498,8 +563,11 @@ def create_session_invite(
             target.id,
             "session_invite",
             f"Surf invite: {session.spot_name} on {session.session_date}",
-            f"@{inviter.username} invited you to a surf session.",
+            f"@{inviter.username} invited you to a surf session on {session.session_date} at {session.spot_name}.",
             related_invite_id=invite.id,
+            related_group_id=session.group_id,
+            related_session_id=session.id,
+            related_user_id=inviter.id,
         )
         if target.telegram_chat_id:
             send_message(
@@ -540,6 +608,8 @@ def accept_session_invite(db: Session, invite_id: int, user: User) -> SessionInv
     invite = db.get(SessionInvite, invite_id)
     if not invite:
         raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.status == SessionInviteStatus.accepted:
+        return invite
     if invite.status not in [SessionInviteStatus.pending, SessionInviteStatus.pending_verification]:
         raise HTTPException(status_code=400, detail="Invite is not active")
     if invite.invited_user_id and invite.invited_user_id != user.id:
@@ -564,11 +634,74 @@ def accept_session_invite(db: Session, invite_id: int, user: User) -> SessionInv
             "Invite accepted",
             f"@{user.username} joined your session invite.",
             related_invite_id=invite.id,
+            related_group_id=session.group_id,
+            related_session_id=session.id,
+            related_user_id=user.id,
         )
         if inviter.telegram_chat_id:
             send_message(inviter.telegram_chat_id, f"@{user.username} accepted your surf invite.")
 
     db.add(invite)
+    db.execute(
+        update(InboxItem)
+        .where(
+            InboxItem.user_id == user.id,
+            InboxItem.related_invite_id == invite.id,
+            InboxItem.item_type == "session_invite",
+        )
+        .values(is_read=True)
+    )
+    db.commit()
+    db.refresh(invite)
+    return invite
+
+
+def decline_session_invite(db: Session, invite_id: int, user: User) -> SessionInvite:
+    invite = db.get(SessionInvite, invite_id)
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.status == SessionInviteStatus.declined:
+        return invite
+    if invite.status not in [SessionInviteStatus.pending, SessionInviteStatus.pending_verification]:
+        raise HTTPException(status_code=400, detail="Invite is not active")
+    if invite.invited_user_id and invite.invited_user_id != user.id:
+        raise HTTPException(status_code=403, detail="Invite is not for current user")
+
+    session = db.get(SurfSession, invite.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    invite.invited_user_id = user.id
+    invite.status = SessionInviteStatus.declined
+    invite.accepted_at = None
+    db.add(invite)
+
+    inviter = db.get(User, invite.invited_by_user_id)
+    if inviter and inviter.id != user.id:
+        create_inbox_item(
+            db,
+            inviter.id,
+            "invite_declined",
+            "Invite declined",
+            f"@{user.username} declined your surf invite.",
+            related_invite_id=invite.id,
+            related_group_id=session.group_id,
+            related_session_id=session.id,
+            related_user_id=user.id,
+        )
+        inviter_chat_id = _resolve_chat_id(db, inviter)
+        if inviter_chat_id:
+            send_message(inviter_chat_id, f"@{user.username} declined your surf invite.")
+
+    db.execute(
+        update(InboxItem)
+        .where(
+            InboxItem.user_id == user.id,
+            InboxItem.related_invite_id == invite.id,
+            InboxItem.item_type == "session_invite",
+        )
+        .values(is_read=True)
+    )
     db.commit()
     db.refresh(invite)
     return invite
@@ -624,6 +757,9 @@ def finalize_registration_invites(db: Session, user: User) -> None:
                 "Invite accepted",
                 f"@{user.username} completed registration and joined your session invite.",
                 related_invite_id=invite.id,
+                related_group_id=session.group_id,
+                related_session_id=session.id,
+                related_user_id=user.id,
             )
             if inviter.telegram_chat_id:
                 send_message(
@@ -685,6 +821,9 @@ def set_rsvp(db: Session, session_id: int, user: User, status_value, transport_n
                     "Invite accepted",
                     f"@{user.username} joined your session invite.",
                     related_invite_id=invite.id,
+                    related_group_id=session.group_id,
+                    related_session_id=session.id,
+                    related_user_id=user.id,
                 )
                 inviter_chat_id = _resolve_chat_id(db, inviter)
                 if inviter_chat_id:

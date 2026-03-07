@@ -36,6 +36,7 @@ const initialState: SurfState = {
   creatingInvite: false,
   sendingSessionInvite: false,
   acceptingInviteIds: [],
+  decliningInviteIds: [],
   loadingInbox: false,
   rsvpLoadingIds: [],
   reportLoadingIds: [],
@@ -119,6 +120,11 @@ export const markInboxRead = createAsyncThunk("surf/markInboxRead", async (itemI
 
 export const acceptInvite = createAsyncThunk("surf/acceptInvite", async (inviteId: number) => {
   const response = await api.post<SessionInvite>(`/surf/invites/${inviteId}/accept`);
+  return response.data;
+});
+
+export const declineInvite = createAsyncThunk("surf/declineInvite", async (inviteId: number) => {
+  const response = await api.post<SessionInvite>(`/surf/invites/${inviteId}/decline`);
   return response.data;
 });
 
@@ -317,6 +323,21 @@ const surfSlice = createSlice({
       .addCase(acceptInvite.rejected, (state, action) => {
         state.acceptingInviteIds = state.acceptingInviteIds.filter((id) => id !== action.meta.arg);
         state.error = action.error.message ?? "Failed to accept invite";
+      })
+      .addCase(declineInvite.pending, (state, action) => {
+        state.decliningInviteIds.push(action.meta.arg);
+      })
+      .addCase(declineInvite.fulfilled, (state, action) => {
+        state.decliningInviteIds = state.decliningInviteIds.filter((id) => id !== action.payload.id);
+        state.inbox = state.inbox.map((item) =>
+          item.related_invite_id === action.payload.id
+            ? { ...item, is_read: true, title: `${item.title} (declined)` }
+            : item
+        );
+      })
+      .addCase(declineInvite.rejected, (state, action) => {
+        state.decliningInviteIds = state.decliningInviteIds.filter((id) => id !== action.meta.arg);
+        state.error = action.error.message ?? "Failed to decline invite";
       })
       .addCase(fetchSessions.pending, (state) => {
         state.loadingSessions = true;

@@ -551,6 +551,14 @@ body {
   margin: 0.2rem 0;
 }
 
+.inbox-page-wrap {
+  display: grid;
+}
+
+.inbox-page-wrap .inbox-panel {
+  min-height: 60vh;
+}
+
 .composer {
   padding: 1rem;
   display: grid;

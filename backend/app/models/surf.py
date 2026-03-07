@@ -183,6 +183,16 @@ class InboxItem(Base):
     related_invite_id: Mapped[int | None] = mapped_column(
         ForeignKey("session_invites.id"), nullable=True, index=True
     )
+    related_friend_request_id: Mapped[int | None] = mapped_column(
+        ForeignKey("friend_requests.id"), nullable=True, index=True
+    )
+    related_group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("surf_groups.id"), nullable=True, index=True
+    )
+    related_session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("surf_sessions.id"), nullable=True, index=True
+    )
+    related_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     is_read: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
