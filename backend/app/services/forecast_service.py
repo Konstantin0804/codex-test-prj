@@ -68,6 +68,19 @@ def _tide_trend(prev_value: float | None, current_value: float | None, next_valu
     return "stable"
 
 
+def _get_with_retry(client: httpx.Client, url: str, params: dict, attempts: int = 2) -> httpx.Response:
+    last_error: Exception | None = None
+    for _ in range(max(attempts, 1)):
+        try:
+            response = client.get(url, params=params, headers={"User-Agent": "surfcrew-planner/1.0"})
+            response.raise_for_status()
+            return response
+        except Exception as exc:
+            last_error = exc
+            continue
+    raise last_error or RuntimeError("Upstream request failed")
+
+
 def get_open_meteo_forecast(
     *,
     spot_name: str,
@@ -111,17 +124,28 @@ def get_open_meteo_forecast(
         "timezone": "auto",
     }
 
-    try:
-        with httpx.Client(timeout=10) as client:
-            marine_resp = client.get(OPEN_METEO_MARINE_URL, params=marine_params)
-            weather_resp = client.get(OPEN_METEO_WEATHER_URL, params=weather_params)
-        marine_resp.raise_for_status()
-        weather_resp.raise_for_status()
-    except Exception:
-        raise HTTPException(status_code=502, detail="Failed to load Open-Meteo forecast")
+    marine: dict = {}
+    weather: dict = {}
+    marine_error: str | None = None
+    weather_error: str | None = None
+    with httpx.Client(timeout=10) as client:
+        try:
+            marine_resp = _get_with_retry(client, OPEN_METEO_MARINE_URL, marine_params)
+            marine = marine_resp.json().get("hourly", {})
+        except Exception as exc:
+            marine_error = str(exc)
+        try:
+            weather_resp = _get_with_retry(client, OPEN_METEO_WEATHER_URL, weather_params)
+            weather = weather_resp.json().get("hourly", {})
+        except Exception as exc:
+            weather_error = str(exc)
 
-    marine = marine_resp.json().get("hourly", {})
-    weather = weather_resp.json().get("hourly", {})
+    if not marine and not weather:
+        detail = "Failed to load Open-Meteo forecast"
+        if marine_error or weather_error:
+            detail = f"Failed to load Open-Meteo forecast (marine: {marine_error or 'ok'}; weather: {weather_error or 'ok'})"
+        raise HTTPException(status_code=502, detail=detail)
+
     times = marine.get("time") or weather.get("time") or []
     if not times:
         raise HTTPException(status_code=502, detail="Forecast data missing")
