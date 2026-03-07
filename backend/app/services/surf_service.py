@@ -33,6 +33,17 @@ def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _public_web_url() -> str:
+    configured = (settings.public_web_url or "").strip().rstrip("/")
+    if configured and "localhost" not in configured:
+        return configured
+
+    origins = [item.strip().rstrip("/") for item in settings.cors_origins.split(",") if item.strip()]
+    if origins:
+        return origins[0]
+    return configured or "http://localhost:5173"
+
+
 def _get_membership(db: Session, group_id: int, user_id: int) -> GroupMembership | None:
     stmt = select(GroupMembership).where(
         GroupMembership.group_id == group_id,
@@ -261,7 +272,7 @@ def create_session_invite(
             select(TelegramChatLink).where(TelegramChatLink.telegram_username == tg_norm)
         )
         if chat_link:
-            register_link = f"{settings.public_web_url}?invite={invite.invite_token}"
+            register_link = f"{_public_web_url()}?invite={invite.invite_token}"
             send_message(
                 chat_link.chat_id,
                 (

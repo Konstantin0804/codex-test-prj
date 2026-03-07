@@ -115,6 +115,7 @@ docker compose exec backend python scripts/seed.py
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_BOT_USERNAME`
 - `TELEGRAM_WEBHOOK_SECRET` (опционально, но рекомендуется)
+- `PUBLIC_WEB_URL` (URL фронтенда, для invite ссылок в Telegram)
 
 Webhook endpoint:
 

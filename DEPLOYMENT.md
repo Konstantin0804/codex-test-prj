@@ -17,6 +17,7 @@
    - `DATABASE_URL` = Neon connection string (`...sslmode=require`)
    - `JWT_SECRET_KEY` = strong random secret
    - `CORS_ORIGINS` = Cloudflare Pages production URL (e.g. `https://pulseboard-ui.pages.dev`)
+   - `PUBLIC_WEB_URL` = Cloudflare Pages URL (e.g. `https://pulseboard-ui.pages.dev`)
    - `TELEGRAM_BOT_TOKEN` = token from BotFather
    - `TELEGRAM_BOT_USERNAME` = bot username (without `@`)
    - `TELEGRAM_WEBHOOK_SECRET` = random secret string
