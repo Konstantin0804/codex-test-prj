@@ -184,6 +184,19 @@ def _friend_pair(user_a: int, user_b: int) -> tuple[int, int]:
     return (min(user_a, user_b), max(user_a, user_b))
 
 
+def _resolve_chat_id(db: Session, user: User) -> int | None:
+    if user.telegram_chat_id:
+        return int(user.telegram_chat_id)
+    if not user.telegram_username:
+        return None
+    chat_link = db.scalar(
+        select(TelegramChatLink).where(TelegramChatLink.telegram_username == user.telegram_username)
+    )
+    if not chat_link:
+        return None
+    return int(chat_link.chat_id)
+
+
 def create_friend_request(db: Session, current_user: User, to_username: str) -> FriendRequest:
     target = db.scalar(select(User).where(User.username == to_username.strip().lower()))
     if not target:
@@ -233,6 +246,12 @@ def create_friend_request(db: Session, current_user: User, to_username: str) -> 
         "New friend request",
         f"@{current_user.username} sent you a friend request.",
     )
+    chat_id = _resolve_chat_id(db, target)
+    if chat_id:
+        send_message(
+            chat_id,
+            f"@{current_user.username} sent you a friend request in SurfCrew Planner. Open app inbox to accept.",
+        )
     db.commit()
     db.refresh(request)
     return request
@@ -262,6 +281,14 @@ def accept_friend_request(db: Session, request_id: int, current_user: User) -> F
         "Friend request accepted",
         f"@{current_user.username} accepted your friend request.",
     )
+    requester = db.get(User, request.from_user_id)
+    if requester:
+        chat_id = _resolve_chat_id(db, requester)
+        if chat_id:
+            send_message(
+                chat_id,
+                f"@{current_user.username} accepted your friend request in SurfCrew Planner.",
+            )
     db.commit()
     db.refresh(request)
     return request
