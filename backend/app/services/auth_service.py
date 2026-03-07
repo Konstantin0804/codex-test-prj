@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -22,7 +22,9 @@ from app.services.surf_service import attach_registration_invite
 from app.services.storage_service import upload_user_avatar
 from app.services.telegram_service import (
     bot_start_link,
+    get_chat_link,
     normalize_telegram_username,
+    send_message,
     send_verification_message,
 )
 
@@ -206,6 +208,83 @@ def get_bot_link(user: User) -> str | None:
         return None
     link = bot_start_link(user.telegram_verify_token)
     return link or None
+
+
+def _public_web_url() -> str:
+    configured = (settings.public_web_url or "").strip().rstrip("/")
+    if configured and "localhost" not in configured:
+        return configured
+    origins = [item.strip().rstrip("/") for item in settings.cors_origins.split(",") if item.strip()]
+    if origins:
+        return origins[0]
+    return configured or "http://localhost:5173"
+
+
+def request_password_reset(
+    db: Session,
+    *,
+    username: str,
+    telegram_username: str,
+) -> None:
+    username_norm = username.strip().lower()
+    tg_norm = normalize_telegram_username(telegram_username)
+    user = db.scalar(select(User).where(User.username == username_norm))
+    if (
+        not user
+        or not user.is_telegram_verified
+        or not user.telegram_username
+        or user.telegram_username != tg_norm
+    ):
+        return
+
+    token = secrets.token_urlsafe(24).replace("-", "").replace("_", "")[:32]
+    expires_at = _utc_now() + timedelta(minutes=30)
+    user.password_reset_token = token
+    user.password_reset_expires_at = expires_at
+    db.add(user)
+    db.commit()
+
+    chat_id = user.telegram_chat_id
+    if not chat_id:
+        link = get_chat_link(db, tg_norm)
+        chat_id = int(link.chat_id) if link else None
+    if not chat_id:
+        return
+
+    reset_link = f"{_public_web_url()}?reset={token}"
+    send_message(
+        int(chat_id),
+        (
+            "SurfCrew Planner password reset.\n"
+            f"@{user.username}, open this link to set a new password:\n{reset_link}\n\n"
+            "This link expires in 30 minutes."
+        ),
+    )
+
+
+def reset_password_with_token(db: Session, *, token: str, new_password: str) -> None:
+    now = _utc_now()
+    user = db.scalar(select(User).where(User.password_reset_token == token))
+    if not user or not user.password_reset_expires_at or user.password_reset_expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token is invalid or expired",
+        )
+
+    user.password_hash = hash_password(new_password)
+    user.password_reset_token = None
+    user.password_reset_expires_at = None
+    db.add(user)
+    db.flush()
+    db.execute(
+        update(RefreshSession)
+        .where(
+            RefreshSession.user_id == user.id,
+            RefreshSession.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+    db.commit()
 
 
 def _normalize_phone_international(value: str) -> str:

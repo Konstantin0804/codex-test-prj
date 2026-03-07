@@ -8,6 +8,10 @@ from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
     LoginRequest,
+    PasswordForgotRequest,
+    PasswordForgotResponse,
+    PasswordResetRequest,
+    PasswordResetResponse,
     ProfileRead,
     ProfileUpdate,
     RegisterRequest,
@@ -22,6 +26,8 @@ from app.services.auth_service import (
     issue_token,
     issue_refresh_token,
     parse_favorite_spots,
+    request_password_reset,
+    reset_password_with_token,
     revoke_refresh_token,
     rotate_refresh_token,
     trigger_telegram_verification,
@@ -102,6 +108,25 @@ def refresh_session(
     _set_refresh_cookie(response, new_refresh)
     token = issue_token(user)
     return AuthResponse(access_token=token, username=user.username)
+
+
+@router.post("/password/forgot", response_model=PasswordForgotResponse)
+def forgot_password(payload: PasswordForgotRequest, db: Session = Depends(get_db_dep)) -> PasswordForgotResponse:
+    request_password_reset(
+        db,
+        username=payload.username,
+        telegram_username=payload.telegram_username,
+    )
+    return PasswordForgotResponse(
+        status="ok",
+        message="If account details are valid, a reset link was sent to your Telegram.",
+    )
+
+
+@router.post("/password/reset", response_model=PasswordResetResponse)
+def reset_password(payload: PasswordResetRequest, db: Session = Depends(get_db_dep)) -> PasswordResetResponse:
+    reset_password_with_token(db, token=payload.token, new_password=payload.new_password)
+    return PasswordResetResponse(status="ok", message="Password updated. Please login with your new password.")
 
 
 @router.post("/logout")

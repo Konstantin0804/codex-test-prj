@@ -17,6 +17,8 @@ class User(Base):
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     is_telegram_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     telegram_verify_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    password_reset_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    password_reset_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     nickname: Mapped[str | None] = mapped_column(String(80), nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)

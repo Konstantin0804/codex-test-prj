@@ -15,6 +15,26 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class PasswordForgotRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+    telegram_username: str = Field(min_length=3, max_length=64)
+
+
+class PasswordForgotResponse(BaseModel):
+    status: str
+    message: str
+
+
+class PasswordResetRequest(BaseModel):
+    token: str = Field(min_length=12, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetResponse(BaseModel):
+    status: str
+    message: str
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

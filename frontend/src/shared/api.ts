@@ -45,7 +45,12 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register") || requestUrl.includes("/auth/refresh")) {
+    if (
+      requestUrl.includes("/auth/login") ||
+      requestUrl.includes("/auth/register") ||
+      requestUrl.includes("/auth/refresh") ||
+      requestUrl.includes("/auth/password/")
+    ) {
       notifyAuthRequired();
       return Promise.reject(error);
     }

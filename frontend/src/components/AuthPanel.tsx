@@ -1,25 +1,73 @@
 import { FormEvent, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { login, register } from "../features/auth/authSlice";
+import { api } from "../shared/api";
+
+function normalizeTelegramHandleInput(value: string): string {
+  const trimmed = value.replace(/\s+/g, "");
+  const withoutAts = trimmed.replace(/^@+/, "");
+  return `@${withoutAts}`;
+}
 
 export function AuthPanel() {
   const dispatch = useAppDispatch();
   const { loading, error, registerMessage, registerBotLink } = useAppSelector(
     (state) => state.auth
   );
-  const inviteToken = new URLSearchParams(window.location.search).get("invite") ?? undefined;
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const params = new URLSearchParams(window.location.search);
+  const inviteToken = params.get("invite") ?? undefined;
+  const resetTokenFromUrl = params.get("reset");
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">(
+    resetTokenFromUrl ? "reset" : "login"
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("@");
+  const [forgotUsername, setForgotUsername] = useState("");
+  const [forgotTelegram, setForgotTelegram] = useState("@");
+  const [resetToken] = useState(resetTokenFromUrl ?? "");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [openedTelegramStep, setOpenedTelegramStep] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    setLocalError(null);
+    setLocalStatus(null);
+
     if (mode === "login") {
       await dispatch(login({ username, password }));
       return;
     }
+    if (mode === "forgot") {
+      try {
+        const response = await api.post<{ message: string }>("/auth/password/forgot", {
+          username: forgotUsername,
+          telegram_username: forgotTelegram
+        });
+        setLocalStatus(response.data.message);
+      } catch (err: any) {
+        setLocalError(err?.response?.data?.detail ?? "Failed to request password reset");
+      }
+      return;
+    }
+    if (mode === "reset") {
+      try {
+        const response = await api.post<{ message: string }>("/auth/password/reset", {
+          token: resetToken,
+          new_password: newPassword
+        });
+        setLocalStatus(response.data.message);
+        setMode("login");
+        window.history.replaceState({}, "", window.location.pathname);
+      } catch (err: any) {
+        setLocalError(err?.response?.data?.detail ?? "Failed to reset password");
+      }
+      return;
+    }
+
     const result = await dispatch(
       register({
         username,
@@ -33,12 +81,24 @@ export function AuthPanel() {
     }
   };
 
+  const registerTelegramCore = telegramUsername.trim().replace(/^@/, "");
+  const forgotTelegramCore = forgotTelegram.trim().replace(/^@/, "");
   const loginValid = username.trim().length >= 3 && password.length >= 8;
   const registerBaseValid =
     username.trim().length >= 3 &&
     password.length >= 8 &&
-    telegramUsername.trim().replace(/^@/, "").length >= 3;
-  const submitDisabled = loading || (mode === "login" ? !loginValid : !registerBaseValid);
+    registerTelegramCore.length >= 3;
+  const forgotValid = forgotUsername.trim().length >= 3 && forgotTelegramCore.length >= 3;
+  const resetValid = resetToken.length >= 12 && newPassword.length >= 8 && newPassword === confirmNewPassword;
+  const submitDisabled =
+    loading ||
+    (mode === "login"
+      ? !loginValid
+      : mode === "register"
+        ? !registerBaseValid
+        : mode === "forgot"
+          ? !forgotValid
+          : !resetValid);
   const mustOpenTelegram = mode === "register" && Boolean(registerBotLink);
   const continueDisabled = mustOpenTelegram && !openedTelegramStep;
 
@@ -46,50 +106,113 @@ export function AuthPanel() {
     <main className="layout auth-layout">
       <section className="card auth-card">
         <p className="eyebrow">Surfrew planner</p>
-        <h1>{mode === "login" ? "Sign In" : "Create Account"}</h1>
+        <h1>
+          {mode === "login"
+            ? "Sign In"
+            : mode === "register"
+              ? "Create Account"
+              : mode === "forgot"
+                ? "Recover Password"
+                : "Set New Password"}
+        </h1>
         <p>Use your account to coordinate surf sessions with your crew.</p>
         <form onSubmit={submit} className="auth-form">
-          <label>
-            Username *
-            <input
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              required
-              minLength={3}
-            />
-          </label>
-          {username.trim().length > 0 && username.trim().length < 3 ? (
-            <p className="tiny error-text">Minimum 3 characters.</p>
-          ) : null}
-          <label>
-            Password *
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              minLength={8}
-            />
-          </label>
-          {password.length > 0 && password.length < 8 ? (
-            <p className="tiny error-text">Minimum 8 characters.</p>
+          {mode === "login" || mode === "register" ? (
+            <>
+              <label>
+                Username *
+                <input
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  required
+                  minLength={3}
+                />
+              </label>
+              {username.trim().length > 0 && username.trim().length < 3 ? (
+                <p className="tiny error-text">Minimum 3 characters.</p>
+              ) : null}
+              <label>
+                Password *
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  minLength={8}
+                />
+              </label>
+              {password.length > 0 && password.length < 8 ? (
+                <p className="tiny error-text">Minimum 8 characters.</p>
+              ) : null}
+            </>
           ) : null}
           {mode === "register" ? (
             <label>
               Telegram Username *
               <input
                 value={telegramUsername}
-                onChange={(event) => setTelegramUsername(event.target.value)}
+                onChange={(event) => setTelegramUsername(normalizeTelegramHandleInput(event.target.value))}
                 required
                 placeholder="@your_username"
               />
             </label>
           ) : null}
-          {mode === "register" && telegramUsername.trim().replace(/^@/, "").length > 0 && telegramUsername.trim().replace(/^@/, "").length < 3 ? (
+          {mode === "register" && registerTelegramCore.length > 0 && registerTelegramCore.length < 3 ? (
             <p className="tiny error-text">Telegram username: minimum 3 characters.</p>
           ) : null}
-          {error ? <p className="error">{error}</p> : null}
+          {mode === "forgot" ? (
+            <>
+              <label>
+                Username *
+                <input
+                  value={forgotUsername}
+                  onChange={(event) => setForgotUsername(event.target.value)}
+                  required
+                  minLength={3}
+                />
+              </label>
+              <label>
+                Telegram Username *
+                <input
+                  value={forgotTelegram}
+                  onChange={(event) => setForgotTelegram(normalizeTelegramHandleInput(event.target.value))}
+                  required
+                  placeholder="@your_username"
+                />
+              </label>
+            </>
+          ) : null}
+          {mode === "reset" ? (
+            <>
+              <label>
+                New Password *
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  required
+                  minLength={8}
+                />
+              </label>
+              <label>
+                Confirm Password *
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(event) => setConfirmNewPassword(event.target.value)}
+                  required
+                  minLength={8}
+                />
+              </label>
+              {confirmNewPassword.length > 0 && confirmNewPassword !== newPassword ? (
+                <p className="tiny error-text">Passwords must match.</p>
+              ) : null}
+            </>
+          ) : null}
+          {error && (mode === "login" || mode === "register") ? <p className="error">{error}</p> : null}
+          {localError ? <p className="error">{localError}</p> : null}
           {registerMessage ? <p className="status">{registerMessage}</p> : null}
+          {localStatus ? <p className="status">{localStatus}</p> : null}
           {registerBotLink ? (
             <div className="verify-box">
               <p className="tiny">
@@ -124,16 +247,58 @@ export function AuthPanel() {
             </p>
           ) : null}
           <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
-            {loading ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}
+            {loading
+              ? "Please wait..."
+              : mode === "login"
+                ? "Sign in"
+                : mode === "register"
+                  ? "Create account"
+                  : mode === "forgot"
+                    ? "Send reset link"
+                    : "Save new password"}
           </button>
         </form>
-        <button
-          className="ghost auth-switch-btn"
-          disabled={continueDisabled}
-          onClick={() => setMode((current) => (current === "login" ? "register" : "login"))}
-        >
-          {mode === "login" ? "Need an account? Register" : "Already have account? Login"}
-        </button>
+        {mode === "login" ? (
+          <>
+            <button
+              className="ghost auth-switch-btn"
+              onClick={() => {
+                setMode("forgot");
+                setLocalError(null);
+                setLocalStatus(null);
+              }}
+            >
+              Forgot password?
+            </button>
+            <button
+              className="ghost auth-switch-btn"
+              disabled={continueDisabled}
+              onClick={() => setMode("register")}
+            >
+              Need an account? Register
+            </button>
+          </>
+        ) : null}
+        {mode === "register" ? (
+          <button
+            className="ghost auth-switch-btn"
+            disabled={continueDisabled}
+            onClick={() => setMode("login")}
+          >
+            Already have account? Login
+          </button>
+        ) : null}
+        {(mode === "forgot" || mode === "reset") ? (
+          <button
+            className="ghost auth-switch-btn"
+            onClick={() => {
+              setMode("login");
+              setLocalError(null);
+            }}
+          >
+            Back to login
+          </button>
+        ) : null}
       </section>
     </main>
   );
