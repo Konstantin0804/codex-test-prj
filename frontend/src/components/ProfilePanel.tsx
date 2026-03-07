@@ -25,7 +25,8 @@ const LEVEL_LABELS: Record<SurfLevel, string> = {
 };
 
 function formatPhoneEs(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(-9);
+  const raw = value.replace(/\D/g, "");
+  const digits = raw.startsWith("34") ? raw.slice(2, 11) : raw.slice(0, 9);
   if (digits.length === 0) {
     return "";
   }
@@ -43,6 +44,11 @@ function formatPhoneEs(value: string): string {
     formatted += `-${g3}`;
   }
   return formatted;
+}
+
+function getPhoneLocalDigits(value: string): string {
+  const raw = value.replace(/\D/g, "");
+  return raw.startsWith("34") ? raw.slice(2, 11) : raw.slice(0, 9);
 }
 
 interface Props {
@@ -79,7 +85,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         setCity(profile.city ?? "");
         setSurfboard(profile.surfboard ?? "");
         setSurfLevel(profile.surf_level ?? "beginner");
-        setPhoneNumber(profile.phone_number ?? "");
+        setPhoneNumber(formatPhoneEs(profile.phone_number ?? ""));
         setFavoriteSpots(profile.favorite_spots ?? []);
         setAvatarUrl(profile.avatar_url ?? null);
         onAvatarChange(profile.avatar_url ?? null);
@@ -96,8 +102,8 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const validAge = Number.isFinite(ageNum) && ageNum >= 8 && ageNum <= 90;
   const validCity = city.trim().length >= 2;
   const validBoard = surfboard.trim().length >= 2;
-  const phoneDigits = phoneNumber.replace(/\D/g, "");
-  const validPhone = phoneDigits.length === 11 && phoneNumber.startsWith("+34");
+  const phoneDigits = getPhoneLocalDigits(phoneNumber);
+  const validPhone = phoneDigits.length === 9;
   const validFavoriteSpots = favoriteSpots.length >= 1 && favoriteSpots.length <= 3;
   const canSubmit = validAge && validCity && validBoard && validPhone && validFavoriteSpots;
 
@@ -265,7 +271,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
             <input
               value={phoneNumber}
               onChange={(event) => setPhoneNumber(formatPhoneEs(event.target.value))}
-              placeholder="+34 647-757-606"
+              placeholder="+34 600-000-000"
             />
           </label>
         </div>
@@ -273,7 +279,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
           <p className="tiny error-text">Surfboard: minimum 2 characters.</p>
         ) : null}
         {!validPhone && phoneNumber.length > 0 ? (
-          <p className="tiny error-text">Phone format: +34 647-757-606</p>
+          <p className="tiny error-text">Phone format: +34 600-000-000</p>
         ) : null}
 
         <label>
