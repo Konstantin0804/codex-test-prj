@@ -243,13 +243,30 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
         <div className="session-spot-picker">
           <label>
             Spot *
-            <div className="spot-input-wrap">
-              <input
-                value={spotName}
-                onChange={(event) => setSpotName(event.target.value)}
-                placeholder="Start typing to search spots..."
-              />
-              {selectedSpot ? <span className="spot-check" aria-label="Spot selected">✓</span> : null}
+            <div className="spot-picker-card">
+              <div className="spot-input-wrap">
+                <input
+                  value={spotName}
+                  onChange={(event) => setSpotName(event.target.value)}
+                  placeholder="Start typing to search spots..."
+                />
+                {selectedSpot ? <span className="spot-check" aria-label="Spot selected">✓</span> : null}
+              </div>
+              <div className="spot-suggest">
+                {spotSuggestions.map((spot) => (
+                  <button
+                    key={spot.name}
+                    type="button"
+                    className={`spot-option ${spot.name === selectedSpot?.name ? "active" : ""}`}
+                    onClick={() => setSpotName(spot.name)}
+                  >
+                    <span>{spot.name}</span>
+                    <span className="spot-option-meta">
+                      <em>{spot.region}</em>
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </label>
           {selectedSpot ? (
@@ -257,21 +274,6 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
               <em>{selectedSpot.region}</em>
             </p>
           ) : null}
-          <div className="spot-suggest">
-            {spotSuggestions.map((spot) => (
-              <button
-                key={spot.name}
-                type="button"
-                className={`spot-option ${spot.name === selectedSpot?.name ? "active" : ""}`}
-                onClick={() => setSpotName(spot.name)}
-              >
-                <span>{spot.name}</span>
-                <span className="spot-option-meta">
-                  <em>{spot.region}</em>
-                </span>
-              </button>
-            ))}
-          </div>
         </div>
         <SurfSpotsMap selectedSpotName={selectedSpot?.name ?? null} onSelectSpot={(name) => setSpotName(name)} />
       </div>
