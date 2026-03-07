@@ -651,7 +651,47 @@ def set_rsvp(db: Session, session_id: int, user: User, status_value, transport_n
 
     rsvp.status = status_value
     rsvp.transport_note = transport_note
-    rsvp.updated_at = _now()
+    now = _now()
+    rsvp.updated_at = now
+
+    status_raw = getattr(status_value, "value", status_value)
+    if status_raw == "going":
+        invite = db.scalar(
+            select(SessionInvite)
+            .where(
+                SessionInvite.session_id == session_id,
+                SessionInvite.status.in_(
+                    [SessionInviteStatus.pending, SessionInviteStatus.pending_verification]
+                ),
+                or_(
+                    SessionInvite.invited_user_id == user.id,
+                    SessionInvite.invited_telegram_username == user.telegram_username,
+                ),
+            )
+            .order_by(SessionInvite.created_at.desc())
+        )
+        if invite:
+            invite.invited_user_id = user.id
+            invite.status = SessionInviteStatus.accepted
+            invite.accepted_at = now
+            db.add(invite)
+
+            inviter = db.get(User, invite.invited_by_user_id)
+            if inviter and inviter.id != user.id:
+                create_inbox_item(
+                    db,
+                    inviter.id,
+                    "invite_accepted",
+                    "Invite accepted",
+                    f"@{user.username} joined your session invite.",
+                    related_invite_id=invite.id,
+                )
+                inviter_chat_id = _resolve_chat_id(db, inviter)
+                if inviter_chat_id:
+                    send_message(
+                        inviter_chat_id,
+                        f"@{user.username} accepted your surf invite.",
+                    )
 
     db.commit()
     db.refresh(rsvp)
