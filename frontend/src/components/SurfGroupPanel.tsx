@@ -33,6 +33,8 @@ export function SurfGroupPanel({
   const [createOpen, setCreateOpen] = useState(groups.length === 0);
 
   const selected = groups.find((group) => group.id === selectedGroupId) ?? null;
+  const groupNameValid = groupName.trim().length >= 2;
+  const inviteCodeValid = inviteCode.trim().length >= 8;
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -72,9 +74,12 @@ export function SurfGroupPanel({
           {groups.length === 0 ? (
             <form onSubmit={submitGroup} className="stack-form">
               <label>
-                New Group Name
+                New Group Name *
                 <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
               </label>
+              {groupName.trim().length > 0 && !groupNameValid ? (
+                <p className="tiny error-text">Minimum 2 characters.</p>
+              ) : null}
               <label>
                 Description
                 <textarea
@@ -83,7 +88,7 @@ export function SurfGroupPanel({
                   placeholder="Weekend dawn patrol team"
                 />
               </label>
-              <button type="submit" disabled={creatingGroup}>
+              <button type="submit" disabled={creatingGroup || !groupNameValid}>
                 {creatingGroup ? "Creating..." : "Create group"}
               </button>
             </form>
@@ -95,9 +100,12 @@ export function SurfGroupPanel({
               {createOpen ? (
                 <form onSubmit={submitGroup} className="stack-form">
                   <label>
-                    New Group Name
+                    New Group Name *
                     <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
                   </label>
+                  {groupName.trim().length > 0 && !groupNameValid ? (
+                    <p className="tiny error-text">Minimum 2 characters.</p>
+                  ) : null}
                   <label>
                     Description
                     <textarea
@@ -106,7 +114,7 @@ export function SurfGroupPanel({
                       placeholder="Weekend dawn patrol team"
                     />
                   </label>
-                  <button type="submit" disabled={creatingGroup}>
+                  <button type="submit" disabled={creatingGroup || !groupNameValid}>
                     {creatingGroup ? "Creating..." : "Create group"}
                   </button>
                 </form>
@@ -116,14 +124,17 @@ export function SurfGroupPanel({
 
           <form onSubmit={submitJoin} className="stack-form">
             <label>
-              Join by Invite Code
+              Join by Invite Code *
               <input
                 value={inviteCode}
                 onChange={(event) => setInviteCode(event.target.value)}
                 placeholder="AB12CD34EF56"
               />
             </label>
-            <button type="submit" disabled={joiningByCode}>
+            {inviteCode.trim().length > 0 && !inviteCodeValid ? (
+              <p className="tiny error-text">Minimum 8 characters.</p>
+            ) : null}
+            <button type="submit" disabled={joiningByCode || !inviteCodeValid}>
               {joiningByCode ? "Joining..." : "Join group"}
             </button>
           </form>

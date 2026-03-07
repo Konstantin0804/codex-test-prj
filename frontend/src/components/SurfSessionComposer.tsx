@@ -39,6 +39,10 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
   const finalInviteUsernames = Array.from(new Set([...typedUsernames, ...selectedFriendUsernames]));
   const previewUsers = finalInviteUsernames.map((username) => `@${username}`);
   const previewTelegrams = typedTelegrams.map((username) => `@${username}`);
+  const isSpotValid = spotName.trim().length >= 2;
+  const isDateValid = Boolean(sessionDate);
+  const isTimeValid = Boolean(meetingTime);
+  const isSubmitValid = isSpotValid && isDateValid && isTimeValid;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -73,12 +77,15 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
     <form className="card surf-composer" onSubmit={submit}>
       <h2>Plan Session</h2>
       <label>
-        Spot
+        Spot *
         <input value={spotName} onChange={(event) => setSpotName(event.target.value)} />
       </label>
+      {spotName.trim().length > 0 && !isSpotValid ? (
+        <p className="tiny error-text">Minimum 2 characters.</p>
+      ) : null}
       <div className="row-3">
         <label>
-          Date
+          Date *
           <input
             type="date"
             value={sessionDate}
@@ -86,7 +93,7 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
           />
         </label>
         <label>
-          Meet Time
+          Meet Time *
           <input
             type="time"
             value={meetingTime}
@@ -103,6 +110,8 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
           </select>
         </label>
       </div>
+      {!isDateValid ? <p className="tiny error-text">Date is required.</p> : null}
+      {!isTimeValid ? <p className="tiny error-text">Meet time is required.</p> : null}
       <label>
         Forecast Note
         <textarea
@@ -175,7 +184,7 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
           </div>
         )}
       </div>
-      <button disabled={disabled} type="submit">
+      <button disabled={disabled || !isSubmitValid} type="submit">
         {disabled ? "Saving..." : "Add to calendar"}
       </button>
     </form>

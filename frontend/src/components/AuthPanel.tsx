@@ -1,7 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { login, register } from "../features/auth/authSlice";
-import { api } from "../shared/api";
 
 export function AuthPanel() {
   const dispatch = useAppDispatch();
@@ -13,39 +12,6 @@ export function AuthPanel() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("@");
-  const [usernameState, setUsernameState] = useState<
-    "idle" | "checking" | "available" | "taken" | "invalid"
-  >("idle");
-
-  useEffect(() => {
-    if (mode !== "register") {
-      return;
-    }
-
-    const normalized = username.trim().toLowerCase();
-    if (normalized.length === 0) {
-      setUsernameState("idle");
-      return;
-    }
-    if (normalized.length < 3) {
-      setUsernameState("invalid");
-      return;
-    }
-
-    setUsernameState("checking");
-    const timer = setTimeout(async () => {
-      try {
-        const response = await api.get<{ available: boolean }>("/auth/check-username", {
-          params: { username: normalized }
-        });
-        setUsernameState(response.data.available ? "available" : "taken");
-      } catch {
-        setUsernameState("idle");
-      }
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [mode, username]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -71,8 +37,7 @@ export function AuthPanel() {
     username.trim().length >= 3 &&
     password.length >= 8 &&
     telegramUsername.trim().replace(/^@/, "").length >= 3;
-  const submitDisabled =
-    loading || (mode === "login" ? !loginValid : !registerBaseValid || usernameState !== "available");
+  const submitDisabled = loading || (mode === "login" ? !loginValid : !registerBaseValid);
 
   return (
     <main className="layout auth-layout">
@@ -82,7 +47,7 @@ export function AuthPanel() {
         <p>Use your account to coordinate surf sessions with your crew.</p>
         <form onSubmit={submit} className="auth-form">
           <label>
-            Username
+            Username *
             <input
               value={username}
               onChange={(event) => setUsername(event.target.value)}
@@ -90,21 +55,11 @@ export function AuthPanel() {
               minLength={3}
             />
           </label>
-          {mode === "register" ? (
-            <p
-              className={`tiny ${
-                usernameState === "taken" || usernameState === "invalid" ? "error-text" : ""
-              }`}
-            >
-              {usernameState === "idle" ? "Use at least 3 characters." : null}
-              {usernameState === "checking" ? "Checking availability..." : null}
-              {usernameState === "available" ? "Username is available." : null}
-              {usernameState === "taken" ? "This username is already taken." : null}
-              {usernameState === "invalid" ? "Username must be at least 3 characters." : null}
-            </p>
+          {username.trim().length > 0 && username.trim().length < 3 ? (
+            <p className="tiny error-text">Minimum 3 characters.</p>
           ) : null}
           <label>
-            Password
+            Password *
             <input
               type="password"
               value={password}
@@ -113,9 +68,12 @@ export function AuthPanel() {
               minLength={8}
             />
           </label>
+          {password.length > 0 && password.length < 8 ? (
+            <p className="tiny error-text">Minimum 8 characters.</p>
+          ) : null}
           {mode === "register" ? (
             <label>
-              Telegram Username
+              Telegram Username *
               <input
                 value={telegramUsername}
                 onChange={(event) => setTelegramUsername(event.target.value)}
@@ -123,6 +81,9 @@ export function AuthPanel() {
                 placeholder="@your_username"
               />
             </label>
+          ) : null}
+          {mode === "register" && telegramUsername.trim().replace(/^@/, "").length > 0 && telegramUsername.trim().replace(/^@/, "").length < 3 ? (
+            <p className="tiny error-text">Telegram username: minimum 3 characters.</p>
           ) : null}
           {error ? <p className="error">{error}</p> : null}
           {registerMessage ? <p className="status">{registerMessage}</p> : null}
