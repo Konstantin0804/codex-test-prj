@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
@@ -30,8 +30,10 @@ from app.schemas.surf import (
     SessionRead,
     SessionReportCreate,
     SessionReportRead,
+    SpotForecastRead,
     UserDirectoryRead,
 )
+from app.services.forecast_service import get_open_meteo_forecast
 from app.services.surf_service import (
     accept_friend_request,
     complete_session,
@@ -120,6 +122,20 @@ def post_group(
         role="admin",
         created_at=group.created_at,
     )
+
+
+@router.get("/forecast/open-meteo", response_model=SpotForecastRead)
+def get_open_meteo_spot_forecast(
+    spot_name: str,
+    session_date: date,
+    meeting_time: time | None = None,
+) -> SpotForecastRead:
+    payload = get_open_meteo_forecast(
+        spot_name=spot_name.strip(),
+        session_date=session_date,
+        meeting_time=meeting_time,
+    )
+    return SpotForecastRead(**payload)
 
 
 @router.get("/groups", response_model=list[GroupRead])

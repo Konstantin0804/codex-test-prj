@@ -467,6 +467,27 @@ body {
   height: 320px;
 }
 
+.forecast-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+}
+
+.forecast-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem 0.6rem;
+  margin-top: 0.3rem;
+}
+
 .invite-row {
   margin-top: 0.55rem;
   display: grid;
@@ -1065,6 +1086,10 @@ button.ghost {
   .avatar-row {
     grid-template-columns: 1fr;
     justify-items: start;
+  }
+
+  .forecast-grid {
+    grid-template-columns: 1fr;
   }
 
   .control-card button {

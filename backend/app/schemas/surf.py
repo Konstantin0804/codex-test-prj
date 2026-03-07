@@ -217,3 +217,22 @@ class InboxItemRead(BaseModel):
     action_status: str = "none"
     action_required: bool = False
     created_at: datetime
+
+
+class SpotForecastRead(BaseModel):
+    provider: str
+    spot_name: str
+    session_date: date
+    target_time: str
+    wave_height_m: float | None = None
+    wave_direction_deg: float | None = None
+    wave_direction_cardinal: str
+    wave_period_s: float | None = None
+    wind_speed_kmh: float | None = None
+    wind_direction_deg: float | None = None
+    wind_direction_cardinal: str
+    water_temperature_c: float | None = None
+    sea_level_m: float | None = None
+    tide_level: str
+    tide_trend: str
+    summary: str

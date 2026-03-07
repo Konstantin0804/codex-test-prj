@@ -1,7 +1,8 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { FriendSummary, SessionLevel } from "../features/surf/types";
 import { SurfSpotsMap } from "./SurfSpotsMap";
 import { SURF_SPOTS, findSurfSpotByName } from "../shared/surfSpots";
+import { api } from "../shared/api";
 
 interface Props {
   disabled: boolean;
@@ -19,6 +20,25 @@ interface Props {
   }) => Promise<void>;
 }
 
+interface SpotForecast {
+  provider: string;
+  spot_name: string;
+  session_date: string;
+  target_time: string;
+  wave_height_m: number | null;
+  wave_direction_deg: number | null;
+  wave_direction_cardinal: string;
+  wave_period_s: number | null;
+  wind_speed_kmh: number | null;
+  wind_direction_deg: number | null;
+  wind_direction_cardinal: string;
+  water_temperature_c: number | null;
+  sea_level_m: number | null;
+  tide_level: string;
+  tide_trend: string;
+  summary: string;
+}
+
 export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmit }: Props) {
   const [spotName, setSpotName] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
@@ -29,6 +49,9 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
   const [selectedFriendUsernames, setSelectedFriendUsernames] = useState<string[]>([]);
   const [inviteUsersRaw, setInviteUsersRaw] = useState("");
   const [inviteTelegramsRaw, setInviteTelegramsRaw] = useState("");
+  const [forecast, setForecast] = useState<SpotForecast | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [forecastError, setForecastError] = useState<string | null>(null);
 
   const typedUsernames = inviteUsersRaw
     .split(",")
@@ -57,6 +80,51 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
       );
     });
   }, [spotName]);
+
+  useEffect(() => {
+    if (!selectedSpot || !sessionDate) {
+      setForecast(null);
+      setForecastError(null);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      setForecastLoading(true);
+      setForecastError(null);
+      try {
+        const response = await api.get<SpotForecast>("/surf/forecast/open-meteo", {
+          params: {
+            spot_name: selectedSpot.name,
+            session_date: sessionDate,
+            meeting_time: meetingTime || undefined,
+          },
+        });
+        if (!cancelled) {
+          setForecast(response.data);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setForecast(null);
+          setForecastError(err?.response?.data?.detail ?? "Failed to load forecast");
+        }
+      } finally {
+        if (!cancelled) {
+          setForecastLoading(false);
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSpot?.name, sessionDate, meetingTime]);
+
+  const applyForecastToNote = () => {
+    if (!forecast?.summary) {
+      return;
+    }
+    setForecastNote(forecast.summary);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -155,6 +223,24 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
       </div>
       {!isDateValid ? <p className="tiny error-text">Date is required.</p> : null}
       {!isTimeValid ? <p className="tiny error-text">Meet time is required.</p> : null}
+      <div className="forecast-card">
+        <div className="forecast-head">
+          <p className="tiny"><strong>Open-Meteo Marine forecast</strong></p>
+          <button type="button" className="ghost" disabled={!forecast} onClick={applyForecastToNote}>
+            Use in note
+          </button>
+        </div>
+        {forecastLoading ? <p className="tiny">Loading forecast...</p> : null}
+        {forecastError ? <p className="tiny error-text">{forecastError}</p> : null}
+        {forecast ? (
+          <div className="forecast-grid">
+            <p className="tiny">Wave: {forecast.wave_height_m !== null ? `${forecast.wave_height_m.toFixed(1)} m` : "n/a"}</p>
+            <p className="tiny">Wind: {forecast.wind_speed_kmh !== null ? `${Math.round(forecast.wind_speed_kmh)} km/h ${forecast.wind_direction_cardinal}` : "n/a"}</p>
+            <p className="tiny">Water: {forecast.water_temperature_c !== null ? `${forecast.water_temperature_c.toFixed(1)}°C` : "n/a"}</p>
+            <p className="tiny">Tide: {forecast.tide_level} ({forecast.tide_trend})</p>
+          </div>
+        ) : null}
+      </div>
       <label>
         Forecast Note
         <span className="tiny">
