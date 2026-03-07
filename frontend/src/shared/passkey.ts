@@ -9,8 +9,18 @@ function base64UrlToBuffer(value: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-function bufferToBase64Url(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function bufferSourceToArrayBuffer(source: BufferSource): ArrayBuffer {
+  if (source instanceof ArrayBuffer) {
+    return source;
+  }
+  if (ArrayBuffer.isView(source)) {
+    return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+  }
+  return new Uint8Array(source).buffer;
+}
+
+function bufferToBase64Url(buffer: BufferSource): string {
+  const bytes = new Uint8Array(bufferSourceToArrayBuffer(buffer));
   let binary = "";
   bytes.forEach((item) => {
     binary += String.fromCharCode(item);
@@ -35,9 +45,9 @@ export function prepareRegistrationOptions(raw: any): PublicKeyCredentialCreatio
       ...options.user,
       id: base64UrlToBuffer(options.user.id),
     },
-    excludeCredentials: (options.excludeCredentials ?? []).map((item) => ({
+    excludeCredentials: (options.excludeCredentials ?? []).map((item: any) => ({
       ...item,
-      id: base64UrlToBuffer(item.id),
+      id: typeof item.id === "string" ? base64UrlToBuffer(item.id) : item.id,
     })),
   };
 }
@@ -50,9 +60,9 @@ export function prepareAuthenticationOptions(raw: any): PublicKeyCredentialReque
   return {
     ...options,
     challenge: base64UrlToBuffer(options.challenge),
-    allowCredentials: (options.allowCredentials ?? []).map((item) => ({
+    allowCredentials: (options.allowCredentials ?? []).map((item: any) => ({
       ...item,
-      id: base64UrlToBuffer(item.id),
+      id: typeof item.id === "string" ? base64UrlToBuffer(item.id) : item.id,
     })),
   };
 }
