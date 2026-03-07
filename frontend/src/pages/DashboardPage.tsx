@@ -249,15 +249,15 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null}
-      {profileModalUsername ? (
-        <UserProfileModal username={profileModalUsername} onClose={() => setProfileModalUsername(null)} />
-      ) : null}
       {crewModalGroupId ? (
         <CrewDetailModal
           groupId={crewModalGroupId}
           onClose={() => setCrewModalGroupId(null)}
           onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
         />
+      ) : null}
+      {profileModalUsername ? (
+        <UserProfileModal username={profileModalUsername} onClose={() => setProfileModalUsername(null)} />
       ) : null}
       <section className="surf-layout">
         <div className="sidebar-stack">
