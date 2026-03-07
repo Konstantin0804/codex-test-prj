@@ -229,37 +229,45 @@ def update_profile(
     db: Session,
     user: User,
     *,
-    age: int,
-    city: str,
-    surfboard: str,
-    surf_level: str,
-    phone_number: str,
-    favorite_spots: list[str],
+    age: int | None,
+    city: str | None,
+    surfboard: str | None,
+    surf_level: str | None,
+    phone_number: str | None,
+    favorite_spots: list[str] | None,
 ) -> User:
-    cleaned_spots = [item.strip() for item in favorite_spots if item.strip()]
-    if len(cleaned_spots) == 0 or len(cleaned_spots) > 3:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Favorite spots must contain between 1 and 3 items",
-        )
-    if len(set(cleaned_spots)) != len(cleaned_spots):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Favorite spots should not contain duplicates",
-        )
-    invalid = [item for item in cleaned_spots if item not in SURF_SPOT_NAMES]
-    if invalid:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Unknown surf spot: {invalid[0]}",
-        )
+    if age is not None:
+        user.age = age
+    if city is not None:
+        user.city = city.strip() or None
+    if surfboard is not None:
+        user.surfboard = surfboard.strip() or None
+    if surf_level is not None:
+        user.surf_level = surf_level
+    if phone_number is not None:
+        cleaned_phone = phone_number.strip()
+        user.phone_number = _normalize_phone_es(cleaned_phone) if cleaned_phone else None
 
-    user.age = age
-    user.city = city.strip()
-    user.surfboard = surfboard.strip()
-    user.surf_level = surf_level
-    user.phone_number = _normalize_phone_es(phone_number)
-    user.favorite_spots_csv = "|".join(cleaned_spots)
+    if favorite_spots is not None:
+        cleaned_spots = [item.strip() for item in favorite_spots if item.strip()]
+        if len(cleaned_spots) > 3:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Favorite spots must contain up to 3 items",
+            )
+        if len(set(cleaned_spots)) != len(cleaned_spots):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Favorite spots should not contain duplicates",
+            )
+        invalid = [item for item in cleaned_spots if item not in SURF_SPOT_NAMES]
+        if invalid:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Unknown surf spot: {invalid[0]}",
+            )
+        user.favorite_spots_csv = "|".join(cleaned_spots)
+
     db.add(user)
     db.commit()
     db.refresh(user)

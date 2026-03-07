@@ -68,7 +68,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
   const [surfboard, setSurfboard] = useState("");
-  const [surfLevel, setSurfLevel] = useState<SurfLevel>("beginner");
+  const [surfLevel, setSurfLevel] = useState<SurfLevel | "">("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [favoriteSpots, setFavoriteSpots] = useState<string[]>([]);
   const [spotQuery, setSpotQuery] = useState("");
@@ -84,7 +84,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         setAge(profile.age ? String(profile.age) : "");
         setCity(profile.city ?? "");
         setSurfboard(profile.surfboard ?? "");
-        setSurfLevel(profile.surf_level ?? "beginner");
+        setSurfLevel(profile.surf_level ?? "");
         setPhoneNumber(formatPhoneEs(profile.phone_number ?? ""));
         setFavoriteSpots(profile.favorite_spots ?? []);
         setAvatarUrl(profile.avatar_url ?? null);
@@ -99,12 +99,12 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   }, [onAvatarChange]);
 
   const ageNum = Number(age);
-  const validAge = Number.isFinite(ageNum) && ageNum >= 8 && ageNum <= 90;
-  const validCity = city.trim().length >= 2;
-  const validBoard = surfboard.trim().length >= 2;
+  const validAge = age.trim().length === 0 || (Number.isFinite(ageNum) && ageNum >= 8 && ageNum <= 90);
+  const validCity = city.trim().length === 0 || city.trim().length >= 2;
+  const validBoard = surfboard.trim().length === 0 || surfboard.trim().length >= 2;
   const phoneDigits = getPhoneLocalDigits(phoneNumber);
-  const validPhone = phoneDigits.length === 9;
-  const validFavoriteSpots = favoriteSpots.length >= 1 && favoriteSpots.length <= 3;
+  const validPhone = phoneNumber.trim().length === 0 || phoneDigits.length === 9;
+  const validFavoriteSpots = favoriteSpots.length <= 3;
   const canSubmit = validAge && validCity && validBoard && validPhone && validFavoriteSpots;
 
   const normalizedPhonePreview = useMemo(() => formatPhoneEs(phoneNumber), [phoneNumber]);
@@ -163,14 +163,26 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
     setError(null);
     setSuccess(null);
     try {
-      await api.patch("/auth/profile", {
-        age: ageNum,
-        city: city.trim(),
-        surfboard: surfboard.trim(),
-        surf_level: surfLevel,
-        phone_number: normalizedPhonePreview,
+      const payload: Record<string, unknown> = {
         favorite_spots: favoriteSpots
-      });
+      };
+      if (age.trim().length > 0) {
+        payload.age = ageNum;
+      }
+      if (city.trim().length > 0) {
+        payload.city = city.trim();
+      }
+      if (surfboard.trim().length > 0) {
+        payload.surfboard = surfboard.trim();
+      }
+      if (surfLevel) {
+        payload.surf_level = surfLevel;
+      }
+      if (phoneNumber.trim().length > 0) {
+        payload.phone_number = normalizedPhonePreview;
+      }
+
+      await api.patch("/auth/profile", payload);
       setPhoneNumber(normalizedPhonePreview);
       setSuccess("Profile saved");
     } catch (err: any) {
@@ -229,7 +241,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
 
         <div className="row-3">
           <label>
-            Age *
+            Age
             <input
               type="number"
               min={8}
@@ -239,15 +251,16 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
             />
           </label>
           <label>
-            City *
+            City
             <input value={city} onChange={(event) => setCity(event.target.value)} />
           </label>
           <label>
-            Surf Level *
+            Surf Level
             <select
               value={surfLevel}
-              onChange={(event) => setSurfLevel(event.target.value as SurfLevel)}
+              onChange={(event) => setSurfLevel(event.target.value as SurfLevel | "")}
             >
+              <option value="">Not set</option>
               {Object.entries(LEVEL_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -263,11 +276,11 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
 
         <div className="row-2">
           <label>
-            Surfboard *
+            Surfboard
             <input value={surfboard} onChange={(event) => setSurfboard(event.target.value)} />
           </label>
           <label>
-            Phone *
+            Phone
             <input
               value={phoneNumber}
               onChange={(event) => setPhoneNumber(formatPhoneEs(event.target.value))}
@@ -283,7 +296,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         ) : null}
 
         <label>
-          TOP 3 favorite spots * (1-3)
+          TOP 3 favorite spots (0-3)
           <input
             value={spotQuery}
             onChange={(event) => setSpotQuery(event.target.value)}
@@ -317,7 +330,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
           </div>
         ) : null}
         {!validFavoriteSpots ? (
-          <p className="tiny error-text">Choose 1 to 3 favorite spots.</p>
+          <p className="tiny error-text">Choose up to 3 favorite spots.</p>
         ) : null}
 
         {error ? <p className="error">{error}</p> : null}

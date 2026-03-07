@@ -55,9 +55,9 @@ class ProfileRead(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    age: int = Field(ge=8, le=90)
-    city: str = Field(min_length=2, max_length=120)
-    surfboard: str = Field(min_length=2, max_length=140)
-    surf_level: SurfLevel
-    phone_number: str = Field(min_length=9, max_length=32)
-    favorite_spots: list[str] = Field(min_length=1, max_length=3)
+    age: int | None = Field(default=None, ge=8, le=90)
+    city: str | None = Field(default=None, min_length=2, max_length=120)
+    surfboard: str | None = Field(default=None, min_length=2, max_length=140)
+    surf_level: SurfLevel | None = None
+    phone_number: str | None = Field(default=None, min_length=9, max_length=32)
+    favorite_spots: list[str] | None = Field(default=None, max_length=3)
