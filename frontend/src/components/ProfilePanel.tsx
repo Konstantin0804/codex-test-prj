@@ -56,6 +56,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const [favoriteSpots, setFavoriteSpots] = useState<string[]>([]);
   const [spotQuery, setSpotQuery] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarInputLabel, setAvatarInputLabel] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -206,22 +207,37 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
           </label>
         </div>
 
-        <label>
-          Avatar
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                void uploadAvatar(file);
-              }
-            }}
-          />
-        </label>
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="profile-avatar-preview" />
-        ) : null}
+        <div className="avatar-row">
+          <div className="avatar-preview-wrap">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="profile-avatar-preview" />
+            ) : (
+              <div className="profile-avatar-placeholder">No avatar</div>
+            )}
+          </div>
+          <div className="avatar-controls">
+            <p className="tiny">
+              {avatarUrl ? "Avatar already set. You can replace it." : "No avatar yet. Upload one."}
+            </p>
+            <label className="avatar-upload-btn" htmlFor="avatar-upload-input">
+              {avatarUrl ? "Replace avatar" : "Upload avatar"}
+            </label>
+            <input
+              id="avatar-upload-input"
+              className="avatar-upload-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  setAvatarInputLabel(file.name);
+                  void uploadAvatar(file);
+                }
+              }}
+            />
+            <p className="tiny">{avatarInputLabel || "JPG, PNG, WEBP, HEIC"}</p>
+          </div>
+        </div>
         {uploadingAvatar ? <p className="tiny">Uploading avatar...</p> : null}
 
         <div className="row-2 about-top-row">

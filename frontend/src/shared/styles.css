@@ -870,11 +870,66 @@ button.ghost {
 }
 
 .profile-avatar-preview {
-  width: 96px;
-  height: 96px;
+  width: 112px;
+  height: 112px;
   border-radius: 999px;
   object-fit: cover;
   border: 1px solid var(--border);
+}
+
+.avatar-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.avatar-preview-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-avatar-placeholder {
+  width: 112px;
+  height: 112px;
+  border-radius: 999px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  background: #fff;
+}
+
+.avatar-controls {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.avatar-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.avatar-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .modal-backdrop {
@@ -976,6 +1031,11 @@ button.ghost {
 
   .control-logout {
     grid-column: 4;
+  }
+
+  .avatar-row {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 
   .control-card button {
