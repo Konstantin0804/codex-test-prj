@@ -1,0 +1,18 @@
+{
+  "provider": "open-meteo",
+  "spot_name": "Sopelana",
+  "session_date": "2026-03-08",
+  "target_time": "2026-03-08T06:00",
+  "wave_height_m": 1.72,
+  "wave_direction_deg": 313,
+  "wave_direction_cardinal": "NW",
+  "wave_period_s": 12.45,
+  "wind_speed_kmh": 6.4,
+  "wind_direction_deg": 133,
+  "wind_direction_cardinal": "SE",
+  "water_temperature_c": 12.9,
+  "sea_level_m": 0.9,
+  "tide_level": "high",
+  "tide_trend": "rising",
+  "summary": "Wave 1.7m (12.4s, NW) · Wind 6 km/h SE · Water 12.9°C · Tide high (rising)"
+}

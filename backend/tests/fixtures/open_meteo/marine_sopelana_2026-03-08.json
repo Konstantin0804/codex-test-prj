@@ -1,0 +1,14 @@
+{
+  "hourly": {
+    "time": [
+      "2026-03-08T05:00",
+      "2026-03-08T06:00",
+      "2026-03-08T07:00"
+    ],
+    "wave_height": [1.6, 1.72, 1.8],
+    "wave_direction": [300, 313, 320],
+    "wave_period": [12.0, 12.45, 13.0],
+    "sea_level_height_msl": [0.7, 0.9, 0.95],
+    "sea_surface_temperature": [12.7, 12.9, 13.0]
+  }
+}
