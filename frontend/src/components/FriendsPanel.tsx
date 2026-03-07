@@ -18,6 +18,7 @@ interface FriendRequestItem {
   from_username: string;
   to_username: string;
   status: string;
+  direction: "incoming" | "outgoing";
   created_at: string;
 }
 
@@ -29,19 +30,20 @@ export function FriendsPanel({ onOpenUser }: Props) {
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<UserDirectoryItem[]>([]);
   const [friends, setFriends] = useState<FriendItem[]>([]);
-  const [incoming, setIncoming] = useState<FriendRequestItem[]>([]);
+  const [pending, setPending] = useState<FriendRequestItem[]>([]);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<number | null>(null);
 
   const load = async () => {
-    const [usersRes, friendsRes, incomingRes] = await Promise.all([
+    const [usersRes, friendsRes, pendingRes] = await Promise.all([
       api.get<UserDirectoryItem[]>("/surf/users"),
       api.get<FriendItem[]>("/surf/friends"),
-      api.get<FriendRequestItem[]>("/surf/friends/requests/incoming")
+      api.get<FriendRequestItem[]>("/surf/friends/requests/pending")
     ]);
     setUsers(usersRes.data);
     setFriends(friendsRes.data);
-    setIncoming(incomingRes.data);
+    setPending(pendingRes.data);
   };
 
   useEffect(() => {
@@ -52,10 +54,28 @@ export function FriendsPanel({ onOpenUser }: Props) {
   }, [open]);
 
   const friendUsernames = useMemo(() => new Set(friends.map((item) => item.username)), [friends]);
+  const outgoingPendingUsernames = useMemo(
+    () =>
+      new Set(
+        pending
+          .filter((item) => item.direction === "outgoing")
+          .map((item) => item.to_username)
+      ),
+    [pending]
+  );
+  const incomingPending = useMemo(
+    () => pending.filter((item) => item.direction === "incoming"),
+    [pending]
+  );
+  const outgoingPending = useMemo(
+    () => pending.filter((item) => item.direction === "outgoing"),
+    [pending]
+  );
+
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return users.filter((item) => {
-      if (friendUsernames.has(item.username)) {
+      if (friendUsernames.has(item.username) || outgoingPendingUsernames.has(item.username)) {
         return false;
       }
       if (!normalized) {
@@ -63,7 +83,7 @@ export function FriendsPanel({ onOpenUser }: Props) {
       }
       return item.username.toLowerCase().includes(normalized);
     });
-  }, [users, query, friendUsernames]);
+  }, [users, query, friendUsernames, outgoingPendingUsernames]);
 
   const sendRequest = async (username: string) => {
     try {
@@ -76,8 +96,26 @@ export function FriendsPanel({ onOpenUser }: Props) {
   };
 
   const acceptRequest = async (id: number) => {
-    await api.post(`/surf/friends/requests/${id}/accept`);
-    await load();
+    try {
+      await api.post(`/surf/friends/requests/${id}/accept`);
+      setMessage("Friend request accepted");
+      await load();
+    } catch (err: any) {
+      setMessage(err?.response?.data?.detail ?? "Failed to accept friend request");
+    }
+  };
+
+  const resendRequest = async (id: number, username: string) => {
+    try {
+      setResendingId(id);
+      await api.post(`/surf/friends/requests/${id}/resend`);
+      setMessage(`Invite sent again to @${username}`);
+      await load();
+    } catch (err: any) {
+      setMessage(err?.response?.data?.detail ?? "Failed to resend friend request");
+    } finally {
+      setResendingId(null);
+    }
   };
 
   return (
@@ -115,19 +153,30 @@ export function FriendsPanel({ onOpenUser }: Props) {
             ))}
           </div>
           <div className="invite-box">
-            <p className="tiny">Incoming requests</p>
-            <div className="chip-row">
-              {incoming.map((request) => (
-                <button
-                  key={request.id}
-                  type="button"
-                  className="ghost"
-                  onClick={() => void acceptRequest(request.id)}
-                >
-                  Accept @{request.from_username}
-                </button>
+            <p className="tiny">Pending friend requests</p>
+            <div className="group-list pending-friends-list">
+              {incomingPending.map((request) => (
+                <article key={request.id} className="group-item pending-row">
+                  <strong>@{request.from_username} wants to connect</strong>
+                  <button type="button" className="ghost" onClick={() => void acceptRequest(request.id)}>
+                    Accept
+                  </button>
+                </article>
               ))}
-              {incoming.length === 0 ? <p className="tiny">No incoming requests.</p> : null}
+              {outgoingPending.map((request) => (
+                <article key={request.id} className="group-item pending-row">
+                  <strong>Waiting for @{request.to_username}</strong>
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={resendingId === request.id}
+                    onClick={() => void resendRequest(request.id, request.to_username)}
+                  >
+                    {resendingId === request.id ? "Sending..." : "Send invite again"}
+                  </button>
+                </article>
+              ))}
+              {pending.length === 0 ? <p className="tiny">No pending requests.</p> : null}
             </div>
           </div>
           <div className="invite-box">

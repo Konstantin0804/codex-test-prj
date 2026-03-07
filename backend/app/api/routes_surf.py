@@ -46,6 +46,7 @@ from app.services.surf_service import (
     get_session_detail,
     join_by_code,
     list_incoming_friend_requests,
+    list_pending_friend_requests,
     list_registered_users,
     list_friends,
     list_inbox_items,
@@ -56,6 +57,7 @@ from app.services.surf_service import (
     list_sessions,
     mark_inbox_read,
     my_rsvp_map,
+    resend_friend_request,
     session_rating_summary_map,
     add_session_photo,
     set_rsvp,
@@ -133,6 +135,7 @@ def post_friend_request(
         from_username=from_user.username if from_user else "",
         to_username=to_user.username if to_user else "",
         status=request.status,
+        direction="outgoing",
         created_at=request.created_at,
     )
 
@@ -153,6 +156,30 @@ def get_incoming_friend_requests(
                 from_username=from_user.username if from_user else "",
                 to_username=to_user.username if to_user else "",
                 status=request.status,
+                direction="incoming",
+                created_at=request.created_at,
+            )
+        )
+    return rows
+
+
+@router.get("/friends/requests/pending", response_model=list[FriendRequestRead])
+def get_pending_friend_requests(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[FriendRequestRead]:
+    requests = list_pending_friend_requests(db, current_user)
+    rows: list[FriendRequestRead] = []
+    for request in requests:
+        from_user = db.get(User, request.from_user_id)
+        to_user = db.get(User, request.to_user_id)
+        rows.append(
+            FriendRequestRead(
+                id=request.id,
+                from_username=from_user.username if from_user else "",
+                to_username=to_user.username if to_user else "",
+                status=request.status,
+                direction="incoming" if request.to_user_id == current_user.id else "outgoing",
                 created_at=request.created_at,
             )
         )
@@ -173,6 +200,26 @@ def post_accept_friend_request(
         from_username=from_user.username if from_user else "",
         to_username=to_user.username if to_user else "",
         status=request.status,
+        direction="incoming",
+        created_at=request.created_at,
+    )
+
+
+@router.post("/friends/requests/{request_id}/resend", response_model=FriendRequestRead)
+def post_resend_friend_request(
+    request_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> FriendRequestRead:
+    request = resend_friend_request(db, request_id, current_user)
+    from_user = db.get(User, request.from_user_id)
+    to_user = db.get(User, request.to_user_id)
+    return FriendRequestRead(
+        id=request.id,
+        from_username=from_user.username if from_user else "",
+        to_username=to_user.username if to_user else "",
+        status=request.status,
+        direction="outgoing",
         created_at=request.created_at,
     )
 

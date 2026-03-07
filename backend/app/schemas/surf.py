@@ -48,6 +48,7 @@ class FriendRequestRead(BaseModel):
     from_username: str
     to_username: str
     status: FriendRequestStatus
+    direction: str = "incoming"
     created_at: datetime
 
 

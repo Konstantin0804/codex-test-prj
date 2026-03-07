@@ -201,6 +201,23 @@ body {
   padding-right: 0.15rem;
 }
 
+.pending-friends-list {
+  max-height: 210px;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.pending-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.pending-row strong {
+  font-size: 0.9rem;
+}
+
 .crew-sessions-list {
   max-height: 200px;
   overflow-y: auto;

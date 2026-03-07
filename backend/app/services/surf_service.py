@@ -197,6 +197,32 @@ def _resolve_chat_id(db: Session, user: User) -> int | None:
     return int(chat_link.chat_id)
 
 
+def _notify_friend_request(db: Session, from_user: User, to_user: User, is_resend: bool = False) -> None:
+    title = "Friend request reminder" if is_resend else "New friend request"
+    body = (
+        f"@{from_user.username} sent your friend request again."
+        if is_resend
+        else f"@{from_user.username} sent you a friend request."
+    )
+    create_inbox_item(
+        db,
+        to_user.id,
+        "friend_request",
+        title,
+        body,
+    )
+    chat_id = _resolve_chat_id(db, to_user)
+    if chat_id:
+        send_message(
+            chat_id,
+            (
+                f"@{from_user.username} sent your friend request again in SurfCrew Planner."
+                if is_resend
+                else f"@{from_user.username} sent you a friend request in SurfCrew Planner. Open app inbox to accept."
+            ),
+        )
+
+
 def create_friend_request(db: Session, current_user: User, to_username: str) -> FriendRequest:
     target = db.scalar(select(User).where(User.username == to_username.strip().lower()))
     if not target:
@@ -219,6 +245,9 @@ def create_friend_request(db: Session, current_user: User, to_username: str) -> 
         )
     )
     if existing_direct:
+        _notify_friend_request(db, current_user, target, is_resend=True)
+        db.commit()
+        db.refresh(existing_direct)
         return existing_direct
 
     reverse = db.scalar(
@@ -239,19 +268,39 @@ def create_friend_request(db: Session, current_user: User, to_username: str) -> 
 
     request = FriendRequest(from_user_id=current_user.id, to_user_id=target.id, status=FriendRequestStatus.pending)
     db.add(request)
-    create_inbox_item(
-        db,
-        target.id,
-        "friend_request",
-        "New friend request",
-        f"@{current_user.username} sent you a friend request.",
-    )
-    chat_id = _resolve_chat_id(db, target)
-    if chat_id:
-        send_message(
-            chat_id,
-            f"@{current_user.username} sent you a friend request in SurfCrew Planner. Open app inbox to accept.",
+    _notify_friend_request(db, current_user, target)
+    db.commit()
+    db.refresh(request)
+    return request
+
+
+def list_pending_friend_requests(db: Session, current_user: User) -> list[FriendRequest]:
+    stmt = (
+        select(FriendRequest)
+        .where(
+            FriendRequest.status == FriendRequestStatus.pending,
+            or_(
+                FriendRequest.from_user_id == current_user.id,
+                FriendRequest.to_user_id == current_user.id,
+            ),
         )
+        .order_by(FriendRequest.created_at.desc())
+    )
+    return list(db.scalars(stmt).all())
+
+
+def resend_friend_request(db: Session, request_id: int, current_user: User) -> FriendRequest:
+    request = db.get(FriendRequest, request_id)
+    if not request or request.from_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Friend request not found")
+    if request.status != FriendRequestStatus.pending:
+        raise HTTPException(status_code=400, detail="Friend request is not pending")
+
+    target = db.get(User, request.to_user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Target user not found")
+
+    _notify_friend_request(db, current_user, target, is_resend=True)
     db.commit()
     db.refresh(request)
     return request
