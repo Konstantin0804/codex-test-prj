@@ -53,6 +53,14 @@ def _nearest_non_null(values: list[float | None], preferred_idx: int) -> float |
     return None
 
 
+def _extract_hourly_series(hourly: dict, keys: list[str]) -> list[float | None]:
+    for key in keys:
+        values = hourly.get(key)
+        if isinstance(values, list):
+            return values
+    return []
+
+
 def _cardinal_direction(deg: float | None) -> str:
     if deg is None:
         return "N/A"
@@ -174,8 +182,22 @@ def get_open_meteo_forecast(
     wave_directions: list[float | None] = marine.get("wave_direction", [])
     wave_periods: list[float | None] = marine.get("wave_period", [])
     water_temps: list[float | None] = marine.get("sea_surface_temperature", [])
-    wind_speeds: list[float | None] = weather.get("wind_speed_10m", [])
-    wind_dirs: list[float | None] = weather.get("wind_direction_10m", [])
+    # Open-Meteo may return wind keys in either new or legacy naming.
+    # Try both and read from weather first, then marine as fallback.
+    wind_speeds: list[float | None] = _extract_hourly_series(
+        weather,
+        ["wind_speed_10m", "windspeed_10m"],
+    ) or _extract_hourly_series(
+        marine,
+        ["wind_speed_10m", "windspeed_10m"],
+    )
+    wind_dirs: list[float | None] = _extract_hourly_series(
+        weather,
+        ["wind_direction_10m", "winddirection_10m"],
+    ) or _extract_hourly_series(
+        marine,
+        ["wind_direction_10m", "winddirection_10m"],
+    )
 
     marine_idx = _closest_index(marine_times, target_time) if marine_times else -1
     weather_idx = _closest_index(weather_times, target_time) if weather_times else -1
