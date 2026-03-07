@@ -267,18 +267,27 @@ def accept_friend_request(db: Session, request_id: int, current_user: User) -> F
     return request
 
 
-def get_group_detail(db: Session, group_id: int, current_user: User) -> tuple[SurfGroup, list[tuple[User, GroupMembership]]]:
+def get_group_detail(
+    db: Session,
+    group_id: int,
+    current_user: User,
+) -> tuple[SurfGroup, list[tuple[User, GroupMembership]], list[SurfSession]]:
     require_membership(db, group_id, current_user)
     group = db.get(SurfGroup, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
-    stmt = (
+    members_stmt = (
         select(User, GroupMembership)
         .join(GroupMembership, GroupMembership.user_id == User.id)
         .where(GroupMembership.group_id == group_id)
         .order_by(User.username.asc())
     )
-    return group, list(db.execute(stmt).all())
+    sessions_stmt = (
+        select(SurfSession)
+        .where(SurfSession.group_id == group_id)
+        .order_by(SurfSession.session_date.desc(), SurfSession.meeting_time.desc(), SurfSession.id.desc())
+    )
+    return group, list(db.execute(members_stmt).all()), list(db.scalars(sessions_stmt).all())
 
 
 def create_invite(db: Session, group_id: int, user: User) -> GroupInvite:
@@ -709,6 +718,34 @@ def list_session_feedback(db: Session, session_id: int, user: User) -> list[tupl
         .order_by(SessionFeedback.updated_at.desc())
     )
     return list(db.execute(stmt).all())
+
+
+def get_session_detail(
+    db: Session,
+    session_id: int,
+    user: User,
+) -> tuple[SurfSession, User, list[tuple[SessionInvite, User, User | None]], list[tuple[SessionPhoto, User]]]:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+
+    owner = db.get(User, session.created_by)
+    if not owner:
+        raise HTTPException(status_code=404, detail="Session owner not found")
+
+    invited_by = aliased(User)
+    invited_user = aliased(User)
+    invites_stmt = (
+        select(SessionInvite, invited_by, invited_user)
+        .join(invited_by, invited_by.id == SessionInvite.invited_by_user_id)
+        .outerjoin(invited_user, invited_user.id == SessionInvite.invited_user_id)
+        .where(SessionInvite.session_id == session_id)
+        .order_by(SessionInvite.created_at.desc())
+    )
+    invites = list(db.execute(invites_stmt).all())
+    photos = list_session_photos(db, session_id, user)
+    return session, owner, invites, photos
 
 
 def my_rsvp_map(db: Session, session_ids: list[int], user_id: int) -> dict[int, str]:

@@ -56,11 +56,19 @@ class GroupMemberRead(BaseModel):
     role: GroupRole
 
 
+class GroupSessionSummaryRead(BaseModel):
+    id: int
+    session_date: date
+    spot_name: str
+    average_rating: float | None = None
+
+
 class GroupDetailRead(BaseModel):
     id: int
     name: str
     description: str
     members: list[GroupMemberRead]
+    sessions: list[GroupSessionSummaryRead] = Field(default_factory=list)
 
 
 class InviteRead(BaseModel):
@@ -162,6 +170,35 @@ class SessionInviteRead(BaseModel):
     invited_telegram_username: str | None = None
     invite_token: str | None = None
     created_at: datetime
+
+
+class SessionInviteStatusRead(BaseModel):
+    id: int
+    invited_username: str | None = None
+    invited_telegram_username: str | None = None
+    status: SessionInviteStatus
+    invited_by_username: str
+    accepted_at: datetime | None = None
+
+
+class SessionDetailRead(BaseModel):
+    id: int
+    group_id: int
+    spot_name: str
+    session_date: date
+    meeting_time: time | None
+    level: SessionLevel
+    forecast_note: str
+    logistics_note: str
+    created_at: datetime
+    created_by_username: str
+    is_completed: bool
+    completed_at: datetime | None = None
+    average_rating: float | None = None
+    rating_count: int = 0
+    participants: list[str] = Field(default_factory=list)
+    invites: list[SessionInviteStatusRead] = Field(default_factory=list)
+    photos: list[SessionPhotoRead] = Field(default_factory=list)
 
 
 class InboxItemRead(BaseModel):

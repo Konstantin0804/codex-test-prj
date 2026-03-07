@@ -6,15 +6,17 @@ interface GroupDetail {
   name: string;
   description: string;
   members: { username: string; role: string }[];
+  sessions: { id: number; session_date: string; spot_name: string; average_rating: number | null }[];
 }
 
 interface Props {
   groupId: number;
   onClose: () => void;
   onOpenUser: (username: string) => void;
+  onOpenSession: (sessionId: number) => void;
 }
 
-export function CrewDetailModal({ groupId, onClose, onOpenUser }: Props) {
+export function CrewDetailModal({ groupId, onClose, onOpenUser, onOpenSession }: Props) {
   const [detail, setDetail] = useState<GroupDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +62,21 @@ export function CrewDetailModal({ groupId, onClose, onOpenUser }: Props) {
                     @{member.username} ({member.role})
                   </button>
                 ))}
+              </div>
+              <h4>Session History</h4>
+              <div className="group-list crew-sessions-list">
+                {detail.sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    className="group-item"
+                    type="button"
+                    onClick={() => onOpenSession(session.id)}
+                  >
+                    <strong>{session.session_date} · {session.spot_name}</strong>
+                    <small>{session.average_rating !== null ? `${session.average_rating.toFixed(1)}⭐` : "—"}</small>
+                  </button>
+                ))}
+                {detail.sessions.length === 0 ? <p className="tiny">No sessions yet.</p> : null}
               </div>
             </div>
           ) : null}

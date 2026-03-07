@@ -6,6 +6,7 @@ import { CrewDetailModal } from "../components/CrewDetailModal";
 import { FriendsPanel } from "../components/FriendsPanel";
 import { InboxPanel } from "../components/InboxPanel";
 import { ProfilePanel } from "../components/ProfilePanel";
+import { SessionDetailModal } from "../components/SessionDetailModal";
 import { SurfCalendar } from "../components/SurfCalendar";
 import { SurfGroupPanel } from "../components/SurfGroupPanel";
 import { SurfSessionComposer } from "../components/SurfSessionComposer";
@@ -44,6 +45,7 @@ export function DashboardPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileModalUsername, setProfileModalUsername] = useState<string | null>(null);
   const [crewModalGroupId, setCrewModalGroupId] = useState<number | null>(null);
+  const [sessionDetailId, setSessionDetailId] = useState<number | null>(null);
   const {
     groups,
     friends,
@@ -280,7 +282,11 @@ export function DashboardPage() {
           groupId={crewModalGroupId}
           onClose={() => setCrewModalGroupId(null)}
           onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
+          onOpenSession={(sessionId) => setSessionDetailId(sessionId)}
         />
+      ) : null}
+      {sessionDetailId ? (
+        <SessionDetailModal sessionId={sessionDetailId} onClose={() => setSessionDetailId(null)} />
       ) : null}
       {profileModalUsername ? (
         <UserProfileModal username={profileModalUsername} onClose={() => setProfileModalUsername(null)} />

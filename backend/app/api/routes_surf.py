@@ -11,6 +11,7 @@ from app.schemas.surf import (
     FriendRead,
     GroupDetailRead,
     GroupMemberRead,
+    GroupSessionSummaryRead,
     GroupCreate,
     GroupRead,
     InboxItemRead,
@@ -22,6 +23,8 @@ from app.schemas.surf import (
     SessionFeedbackRead,
     SessionInviteCreate,
     SessionInviteRead,
+    SessionInviteStatusRead,
+    SessionDetailRead,
     SessionPhotoRead,
     SessionRead,
     SessionReportCreate,
@@ -40,6 +43,7 @@ from app.services.surf_service import (
     create_session,
     upsert_session_feedback,
     get_group_detail,
+    get_session_detail,
     join_by_code,
     list_incoming_friend_requests,
     list_registered_users,
@@ -179,12 +183,81 @@ def get_group_detail_route(
     db: Session = Depends(get_db_dep),
     current_user: User = Depends(get_current_user),
 ) -> GroupDetailRead:
-    group, members = get_group_detail(db, group_id, current_user)
+    group, members, sessions = get_group_detail(db, group_id, current_user)
+    ratings = session_rating_summary_map(db, [item.id for item in sessions])
     return GroupDetailRead(
         id=group.id,
         name=group.name,
         description=group.description,
         members=[GroupMemberRead(username=user.username, role=membership.role) for user, membership in members],
+        sessions=[
+            GroupSessionSummaryRead(
+                id=session.id,
+                session_date=session.session_date,
+                spot_name=session.spot_name,
+                average_rating=ratings.get(session.id, (None, 0))[0],
+            )
+            for session in sessions
+        ],
+    )
+
+
+@router.get("/sessions/{session_id}/detail", response_model=SessionDetailRead)
+def get_session_detail_route(
+    session_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionDetailRead:
+    session, owner, invites, photos = get_session_detail(db, session_id, current_user)
+    avg, count = session_rating_summary_map(db, [session.id]).get(session.id, (None, 0))
+
+    participant_usernames = {owner.username}
+    invite_rows: list[SessionInviteStatusRead] = []
+    for invite, invited_by, invited_user in invites:
+        if invite.status.value == "accepted" and invited_user:
+            participant_usernames.add(invited_user.username)
+        invite_rows.append(
+            SessionInviteStatusRead(
+                id=invite.id,
+                invited_username=invited_user.username if invited_user else None,
+                invited_telegram_username=invite.invited_telegram_username,
+                status=invite.status,
+                invited_by_username=invited_by.username,
+                accepted_at=invite.accepted_at,
+            )
+        )
+
+    photo_rows = [
+        SessionPhotoRead(
+            id=photo.id,
+            session_id=photo.session_id,
+            uploaded_by_username=photo_user.username,
+            public_url=photo.public_url,
+            content_type=photo.content_type,
+            file_size_bytes=photo.file_size_bytes,
+            created_at=photo.created_at,
+        )
+        for photo, photo_user in photos
+    ]
+
+    return SessionDetailRead(
+        id=session.id,
+        group_id=session.group_id,
+        spot_name=session.spot_name,
+        session_date=session.session_date,
+        meeting_time=session.meeting_time,
+        level=session.level,
+        forecast_note=session.forecast_note,
+        logistics_note=session.logistics_note,
+        created_at=session.created_at,
+        created_by_username=owner.username,
+        is_completed=session.completed_at is not None,
+        completed_at=session.completed_at,
+        average_rating=avg,
+        rating_count=count,
+        participants=sorted(participant_usernames),
+        invites=invite_rows,
+        photos=photo_rows,
     )
 
 
@@ -222,7 +295,25 @@ def post_session(
     current_user: User = Depends(get_current_user),
 ) -> SessionRead:
     session = create_session(db, group_id, payload, current_user)
-    return SessionRead.model_validate(session)
+    my_rsvp = my_rsvp_map(db, [session.id], current_user.id).get(session.id)
+    avg, count = session_rating_summary_map(db, [session.id]).get(session.id, (None, 0))
+    return SessionRead(
+        id=session.id,
+        group_id=session.group_id,
+        spot_name=session.spot_name,
+        session_date=session.session_date,
+        meeting_time=session.meeting_time,
+        level=session.level,
+        forecast_note=session.forecast_note,
+        logistics_note=session.logistics_note,
+        created_at=session.created_at,
+        my_rsvp=my_rsvp,
+        is_completed=session.completed_at is not None,
+        completed_at=session.completed_at,
+        can_complete=session.created_by == current_user.id,
+        average_rating=avg,
+        rating_count=count,
+    )
 
 
 @router.get("/groups/{group_id}/sessions", response_model=list[SessionRead])
