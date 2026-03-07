@@ -48,6 +48,10 @@ class PasskeyOptionsResponse(BaseModel):
     options: dict
 
 
+class PasskeyStatusResponse(BaseModel):
+    count: int
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

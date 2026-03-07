@@ -23,6 +23,10 @@ interface Profile {
   avatar_url: string | null;
 }
 
+interface PasskeyStatus {
+  count: number;
+}
+
 const LEVEL_LABELS: Record<SurfLevel, string> = {
   beginner: "Beginner",
   beginner_plus: "Beginner+",
@@ -67,12 +71,16 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarInputLabel, setAvatarInputLabel] = useState("");
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [passkeyCount, setPasskeyCount] = useState(0);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await api.get<Profile>("/auth/profile");
-        const profile = response.data;
+        const [profileRes, passkeyRes] = await Promise.all([
+          api.get<Profile>("/auth/profile"),
+          api.get<PasskeyStatus>("/auth/passkeys/status"),
+        ]);
+        const profile = profileRes.data;
         setUsername(profile.username);
         setTelegramUsername(profile.telegram_username ?? "");
         setAge(profile.age ? String(profile.age) : "");
@@ -84,6 +92,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         setPhoneNumber(profile.phone_number ?? "");
         setFavoriteSpots(profile.favorite_spots ?? []);
         setAvatarUrl(profile.avatar_url ?? null);
+        setPasskeyCount(passkeyRes.data.count ?? 0);
         onAvatarChange(profile.avatar_url ?? null);
       } catch {
         setError("Failed to load profile");
@@ -216,9 +225,25 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
       await api.post("/auth/passkeys/register/verify", {
         credential: serializeRegistrationCredential(credential),
       });
+      setPasskeyCount((value) => value + 1);
       setSuccess("Face ID / Touch ID enabled on this device.");
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? "Failed to register passkey");
+    } finally {
+      setPasskeyBusy(false);
+    }
+  };
+
+  const deletePasskeys = async () => {
+    setError(null);
+    setSuccess(null);
+    setPasskeyBusy(true);
+    try {
+      const response = await api.delete<{ removed: number }>("/auth/passkeys");
+      setPasskeyCount(0);
+      setSuccess(`Removed ${response.data.removed ?? 0} passkey(s).`);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to remove passkeys");
     } finally {
       setPasskeyBusy(false);
     }
@@ -416,9 +441,22 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
 
         {error ? <p className="error">{error}</p> : null}
         {success ? <p className="status">{success}</p> : null}
-        <button className="ghost" type="button" disabled={passkeyBusy} onClick={() => void registerPasskey()}>
-          {passkeyBusy ? "Setting up passkey..." : "Enable Face ID / Touch ID"}
-        </button>
+        <div className="row-2">
+          <button className="ghost" type="button" disabled={passkeyBusy} onClick={() => void registerPasskey()}>
+            {passkeyBusy ? "Setting up passkey..." : "Enable Face ID / Touch ID"}
+          </button>
+          <button
+            className="ghost"
+            type="button"
+            disabled={passkeyBusy || passkeyCount <= 0}
+            onClick={() => void deletePasskeys()}
+          >
+            Remove passkeys
+          </button>
+        </div>
+        <p className="tiny">
+          Registered passkeys: <strong>{passkeyCount}</strong>
+        </p>
         <button type="submit" disabled={saving || !canSubmit}>
           {saving ? "Saving..." : "Save profile"}
         </button>

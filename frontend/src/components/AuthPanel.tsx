@@ -181,7 +181,14 @@ export function AuthPanel() {
         // ignore storage failures
       }
     } catch (err: any) {
-      setLocalError(err?.response?.data?.detail ?? "Passkey login failed");
+      const detail = String(err?.response?.data?.detail ?? "");
+      if (detail.toLowerCase().includes("no passkeys found")) {
+        setLocalError(
+          "You don’t have registered passkeys yet. Please login with username/password and enable Face ID / Touch ID in About Me."
+        );
+      } else {
+        setLocalError(detail || "Passkey login failed");
+      }
     } finally {
       setPasskeyLoading(false);
     }

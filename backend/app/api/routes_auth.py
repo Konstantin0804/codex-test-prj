@@ -11,6 +11,7 @@ from app.schemas.auth import (
     PasskeyBeginRequest,
     PasskeyFinishRequest,
     PasskeyOptionsResponse,
+    PasskeyStatusResponse,
     PasswordForgotRequest,
     PasswordForgotResponse,
     PasswordResetRequest,
@@ -25,6 +26,8 @@ from app.schemas.auth import (
 from app.services.passkey_service import (
     begin_passkey_authentication,
     begin_passkey_registration,
+    count_user_passkeys,
+    delete_user_passkeys,
     finish_passkey_authentication,
     finish_passkey_registration,
 )
@@ -179,6 +182,23 @@ def passkey_auth_verify(
     refresh = issue_refresh_token(db, user)
     _set_refresh_cookie(response, refresh)
     return AuthResponse(access_token=token, username=user.username)
+
+
+@router.get("/passkeys/status", response_model=PasskeyStatusResponse)
+def passkey_status(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> PasskeyStatusResponse:
+    return PasskeyStatusResponse(count=count_user_passkeys(db, current_user))
+
+
+@router.delete("/passkeys")
+def passkey_delete(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, int | str]:
+    removed = delete_user_passkeys(db, current_user)
+    return {"status": "ok", "removed": removed}
 
 
 @router.post("/logout")

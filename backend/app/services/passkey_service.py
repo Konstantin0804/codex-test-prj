@@ -75,6 +75,21 @@ def _cleanup_expired_challenges(db: Session) -> None:
     db.commit()
 
 
+def count_user_passkeys(db: Session, user: User) -> int:
+    return len(list(db.scalars(select(PasskeyCredential.id).where(PasskeyCredential.user_id == user.id)).all()))
+
+
+def delete_user_passkeys(db: Session, user: User) -> int:
+    credentials = list(db.scalars(select(PasskeyCredential).where(PasskeyCredential.user_id == user.id)).all())
+    count = len(credentials)
+    if count == 0:
+        return 0
+    for item in credentials:
+        db.delete(item)
+    db.commit()
+    return count
+
+
 def begin_passkey_registration(db: Session, user: User) -> dict:
     _cleanup_expired_challenges(db)
     credentials = list(
