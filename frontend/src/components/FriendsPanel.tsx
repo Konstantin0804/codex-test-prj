@@ -24,9 +24,10 @@ interface FriendRequestItem {
 
 interface Props {
   onOpenUser: (username: string) => void;
+  hasUnread: boolean;
 }
 
-export function FriendsPanel({ onOpenUser }: Props) {
+export function FriendsPanel({ onOpenUser, hasUnread }: Props) {
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<UserDirectoryItem[]>([]);
   const [friends, setFriends] = useState<FriendItem[]>([]);
@@ -119,7 +120,8 @@ export function FriendsPanel({ onOpenUser }: Props) {
   };
 
   return (
-    <aside className="card surf-sidebar">
+    <aside className="card surf-sidebar panel-with-dot">
+      {hasUnread ? <span className="notify-dot" aria-label="New notifications" /> : null}
       <div className="crew-header">
         <h2>Friends</h2>
         <button className="ghost crew-toggle" type="button" onClick={() => setOpen((value) => !value)}>

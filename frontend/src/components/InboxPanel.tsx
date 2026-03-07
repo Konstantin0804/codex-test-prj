@@ -14,6 +14,7 @@ interface Props {
   onOpenUser: (username: string) => void;
   onOpenGroup: (groupId: number) => void;
   onOpenSession: (sessionId: number) => void;
+  hasUnread?: boolean;
   detailed?: boolean;
   onOpenDetailsPage?: () => void;
   onCloseDetailsPage?: () => void;
@@ -33,6 +34,7 @@ export function InboxPanel({
   onOpenUser,
   onOpenGroup,
   onOpenSession,
+  hasUnread = false,
   detailed = false,
   onOpenDetailsPage,
   onCloseDetailsPage
@@ -40,7 +42,8 @@ export function InboxPanel({
   const visibleItems = detailed ? items : items.slice(0, 6);
 
   return (
-    <section className="card inbox-panel">
+    <section className="card inbox-panel panel-with-dot">
+      {hasUnread ? <span className="notify-dot" aria-label="New notifications" /> : null}
       <div className="inbox-head">
         <h2>{detailed ? "Inbox Details" : "Inbox"}</h2>
         <div className="chip-row">

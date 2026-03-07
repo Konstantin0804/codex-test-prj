@@ -256,6 +256,11 @@ export function DashboardPage() {
     await dispatch(markInboxRead(itemId));
   };
 
+  const unreadInboxCount = inbox.filter((item) => !item.is_read).length;
+  const unreadFriendsCount = inbox.filter(
+    (item) => !item.is_read && item.item_type.startsWith("friend_request")
+  ).length;
+
   return (
     <main className="layout">
       <AppHeader />
@@ -318,6 +323,7 @@ export function DashboardPage() {
             loading={loadingInbox}
             acceptingInviteIds={acceptingInviteIds}
             decliningInviteIds={decliningInviteIds}
+            hasUnread={unreadInboxCount > 0}
             onRefresh={async () => {
               await dispatch(fetchInbox());
             }}
@@ -350,7 +356,10 @@ export function DashboardPage() {
               }}
               onOpenGroupDetail={(groupId) => setCrewModalGroupId(groupId)}
             />
-            <FriendsPanel onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)} />
+            <FriendsPanel
+              onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
+              hasUnread={unreadFriendsCount > 0}
+            />
           </div>
 
           <section className="surf-main">
@@ -398,6 +407,7 @@ export function DashboardPage() {
                   loading={loadingInbox}
                   acceptingInviteIds={acceptingInviteIds}
                   decliningInviteIds={decliningInviteIds}
+                  hasUnread={unreadInboxCount > 0}
                   onRefresh={async () => {
                     await dispatch(fetchInbox());
                   }}

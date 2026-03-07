@@ -214,29 +214,41 @@ export function SurfCalendar({
                       }}
                       className="report-form"
                     >
-                      <div className="row-2">
+                      <div className="feedback-stars-row">
                         <label>
-                          Stars (0-5)
-                          <select
-                            value={feedbackForm.stars === null ? "" : String(feedbackForm.stars)}
-                            onChange={(event) =>
-                              {
+                          Rating
+                          <div className="rating-stars" role="radiogroup" aria-label="Session rating">
+                            {[1, 2, 3, 4, 5].map((value) => {
+                              const active = (feedbackForm.stars ?? 0) >= value;
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  className={`star-btn ${active ? "active" : ""}`}
+                                  onClick={() => {
+                                    setFeedbackEditedFor(session.id);
+                                    setFeedbackForm((prev) => ({
+                                      ...prev,
+                                      stars: prev.stars === value ? null : value
+                                    }));
+                                  }}
+                                  aria-label={`${value} star${value > 1 ? "s" : ""}`}
+                                >
+                                  ★
+                                </button>
+                              );
+                            })}
+                            <button
+                              type="button"
+                              className="ghost star-clear"
+                              onClick={() => {
                                 setFeedbackEditedFor(session.id);
-                                setFeedbackForm((prev) => ({
-                                  ...prev,
-                                  stars: event.target.value === "" ? null : Number(event.target.value)
-                                }));
-                              }
-                            }
-                          >
-                            <option value="">No stars</option>
-                            <option value="0">0</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                          </select>
+                                setFeedbackForm((prev) => ({ ...prev, stars: null }));
+                              }}
+                            >
+                              Clear
+                            </button>
+                          </div>
                         </label>
                         <label>
                           Comment
