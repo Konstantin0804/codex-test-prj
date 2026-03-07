@@ -65,13 +65,23 @@ export function SurfCalendar({
   const [inviteTelegram, setInviteTelegram] = useState("");
   const [photoFiles, setPhotoFiles] = useState<Record<number, File | null>>({});
 
-  const grouped = useMemo(() => {
+  const groupByDate = (items: SurfSession[]) => {
     const map: Record<string, SurfSession[]> = {};
-    for (const session of sessions) {
+    for (const session of items) {
       map[session.session_date] = map[session.session_date] ?? [];
       map[session.session_date].push(session);
     }
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  };
+
+  const completedGroups = useMemo(() => {
+    const completed = sessions.filter((session) => session.is_completed);
+    return groupByDate(completed).reverse();
+  }, [sessions]);
+
+  const plannedGroups = useMemo(() => {
+    const planned = sessions.filter((session) => !session.is_completed);
+    return groupByDate(planned);
   }, [sessions]);
 
   const submitReport = async (event: FormEvent, sessionId: number) => {
@@ -84,15 +94,8 @@ export function SurfCalendar({
     return <p className="status">Loading sessions...</p>;
   }
 
-  return (
-    <section className="calendar-wrap">
-      {grouped.length === 0 ? <p className="status">No sessions yet. Plan your first dawn patrol.</p> : null}
-      {grouped.map(([date, items]) => (
-        <article className="card day-block" key={date}>
-          <h3>{date}</h3>
-          <div className="session-stack">
-            {items.map((session) => (
-              <div className="session-card" key={session.id}>
+  const renderSessionCard = (session: SurfSession) => (
+    <div className="session-card" key={session.id}>
                 <div className="session-head">
                   <strong>{session.spot_name}</strong>
                   <span>{session.meeting_time ?? "No meet time"}</span>
@@ -372,11 +375,32 @@ export function SurfCalendar({
                     </div>
                   </div>
                 ) : null}
-              </div>
-            ))}
-          </div>
-        </article>
-      ))}
+    </div>
+  );
+
+  const renderColumn = (
+    title: string,
+    groups: Array<[string, SurfSession[]]>,
+    emptyText: string
+  ) => (
+    <section className="card day-block session-column">
+      <h3>{title}</h3>
+      {groups.length === 0 ? <p className="status">{emptyText}</p> : null}
+      <div className="calendar-wrap">
+        {groups.map(([date, items]) => (
+          <article className="card day-block" key={`${title}:${date}`}>
+            <h3>{date}</h3>
+            <div className="session-stack">{items.map((session) => renderSessionCard(session))}</div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+
+  return (
+    <section className="calendar-split">
+      {renderColumn("Completed Sessions", completedGroups, "No completed sessions yet.")}
+      {renderColumn("Planned Sessions", plannedGroups, "No planned sessions yet. Plan your first dawn patrol.")}
     </section>
   );
 }
