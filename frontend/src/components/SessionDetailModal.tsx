@@ -16,6 +16,17 @@ interface SessionDetail {
   completed_at: string | null;
   average_rating: number | null;
   rating_count: number;
+  forecast_snapshot: {
+    provider: string | null;
+    target_time: string | null;
+    wave_height_m: number | null;
+    wind_speed_kmh: number | null;
+    wind_direction_cardinal: string | null;
+    water_temperature_c: number | null;
+    tide_level: string | null;
+    tide_trend: string | null;
+    summary: string | null;
+  } | null;
   participants: string[];
   invites: {
     id: number;
@@ -70,6 +81,29 @@ export function SessionDetailModal({ sessionId, onClose }: Props) {
     }
   };
 
+  const windArrow = (cardinal: string | null) => {
+    switch ((cardinal ?? "").toUpperCase()) {
+      case "N":
+        return "↓";
+      case "NE":
+        return "↙";
+      case "E":
+        return "←";
+      case "SE":
+        return "↖";
+      case "S":
+        return "↑";
+      case "SW":
+        return "↗";
+      case "W":
+        return "→";
+      case "NW":
+        return "↘";
+      default:
+        return "•";
+    }
+  };
+
   return (
     <div className="modal-backdrop">
       <div className="modal-wrap">
@@ -95,6 +129,22 @@ export function SessionDetailModal({ sessionId, onClose }: Props) {
                   ? `Completed${detail.average_rating !== null ? ` · ${detail.average_rating.toFixed(1)}⭐ (${detail.rating_count})` : ""}`
                   : "Not completed"}
               </p>
+              {detail.forecast_snapshot ? (
+                <>
+                  <div className="forecast-inline">
+                    <span className="forecast-pill">🌊 {detail.forecast_snapshot.wave_height_m !== null ? `${detail.forecast_snapshot.wave_height_m.toFixed(1)} m` : "n/a"}</span>
+                    <span className="forecast-pill">
+                      💨
+                      {detail.forecast_snapshot.wind_speed_kmh !== null
+                        ? ` ${Math.round(detail.forecast_snapshot.wind_speed_kmh)} km/h ${windArrow(detail.forecast_snapshot.wind_direction_cardinal)} ${detail.forecast_snapshot.wind_direction_cardinal ?? "N/A"}`
+                        : " n/a"}
+                    </span>
+                    <span className="forecast-pill">🌡️ {detail.forecast_snapshot.water_temperature_c !== null ? `${detail.forecast_snapshot.water_temperature_c.toFixed(1)}°C` : "n/a"}</span>
+                    <span className="forecast-pill">🌊⬍ {detail.forecast_snapshot.tide_level ?? "n/a"} ({detail.forecast_snapshot.tide_trend ?? "n/a"})</span>
+                  </div>
+                  <p className="tiny">{detail.forecast_snapshot.summary ?? "Forecast snapshot saved"}</p>
+                </>
+              ) : null}
               <p className="tiny">{detail.forecast_note || "No forecast note"}</p>
               <p className="tiny">{detail.logistics_note || "No logistics note"}</p>
 

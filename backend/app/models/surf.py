@@ -5,6 +5,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -100,6 +101,20 @@ class SurfSession(Base):
     meeting_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     level: Mapped[SessionLevel] = mapped_column(Enum(SessionLevel), default=SessionLevel.mixed, nullable=False)
     forecast_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    forecast_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    forecast_target_time: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    forecast_wave_height_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forecast_wave_direction_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forecast_wave_direction_cardinal: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    forecast_wave_period_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forecast_wind_speed_kmh: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forecast_wind_direction_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forecast_wind_direction_cardinal: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    forecast_water_temperature_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forecast_sea_level_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forecast_tide_level: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    forecast_tide_trend: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    forecast_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     logistics_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

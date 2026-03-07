@@ -38,6 +38,24 @@ export interface SurfSession {
   can_complete: boolean;
   average_rating: number | null;
   rating_count: number;
+  forecast_snapshot: SessionForecastSnapshot | null;
+}
+
+export interface SessionForecastSnapshot {
+  provider: string | null;
+  target_time: string | null;
+  wave_height_m: number | null;
+  wave_direction_deg: number | null;
+  wave_direction_cardinal: string | null;
+  wave_period_s: number | null;
+  wind_speed_kmh: number | null;
+  wind_direction_deg: number | null;
+  wind_direction_cardinal: string | null;
+  water_temperature_c: number | null;
+  sea_level_m: number | null;
+  tide_level: string | null;
+  tide_trend: string | null;
+  summary: string | null;
 }
 
 export interface SessionReport {

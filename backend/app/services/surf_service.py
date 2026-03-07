@@ -28,6 +28,7 @@ from app.models.surf import (
 from app.models.telegram import TelegramChatLink
 from app.models.user import User
 from app.schemas.surf import SessionCreate
+from app.services.forecast_service import get_open_meteo_forecast
 from app.services.storage_service import upload_session_photo
 from app.services.telegram_service import normalize_telegram_username, send_message
 
@@ -475,7 +476,30 @@ def create_session(db: Session, group_id: int, payload: SessionCreate, user: Use
     require_membership(db, group_id, user)
     if payload.spot_name not in SURF_SPOT_NAMES:
         raise HTTPException(status_code=422, detail="Unknown surf spot. Select one from the list.")
-    session = SurfSession(group_id=group_id, created_by=user.id, **payload.model_dump())
+    forecast = get_open_meteo_forecast(
+        spot_name=payload.spot_name,
+        session_date=payload.session_date,
+        meeting_time=payload.meeting_time,
+    )
+    session = SurfSession(
+        group_id=group_id,
+        created_by=user.id,
+        **payload.model_dump(),
+        forecast_provider=forecast.get("provider"),
+        forecast_target_time=forecast.get("target_time"),
+        forecast_wave_height_m=forecast.get("wave_height_m"),
+        forecast_wave_direction_deg=forecast.get("wave_direction_deg"),
+        forecast_wave_direction_cardinal=forecast.get("wave_direction_cardinal"),
+        forecast_wave_period_s=forecast.get("wave_period_s"),
+        forecast_wind_speed_kmh=forecast.get("wind_speed_kmh"),
+        forecast_wind_direction_deg=forecast.get("wind_direction_deg"),
+        forecast_wind_direction_cardinal=forecast.get("wind_direction_cardinal"),
+        forecast_water_temperature_c=forecast.get("water_temperature_c"),
+        forecast_sea_level_m=forecast.get("sea_level_m"),
+        forecast_tide_level=forecast.get("tide_level"),
+        forecast_tide_trend=forecast.get("tide_trend"),
+        forecast_summary=forecast.get("summary"),
+    )
     db.add(session)
     db.commit()
     db.refresh(session)

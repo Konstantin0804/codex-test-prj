@@ -91,6 +91,23 @@ class SessionCreate(BaseModel):
     logistics_note: str = ""
 
 
+class SessionForecastSnapshotRead(BaseModel):
+    provider: str | None = None
+    target_time: str | None = None
+    wave_height_m: float | None = None
+    wave_direction_deg: float | None = None
+    wave_direction_cardinal: str | None = None
+    wave_period_s: float | None = None
+    wind_speed_kmh: float | None = None
+    wind_direction_deg: float | None = None
+    wind_direction_cardinal: str | None = None
+    water_temperature_c: float | None = None
+    sea_level_m: float | None = None
+    tide_level: str | None = None
+    tide_trend: str | None = None
+    summary: str | None = None
+
+
 class SessionRead(BaseModel):
     id: int
     group_id: int
@@ -107,6 +124,7 @@ class SessionRead(BaseModel):
     can_complete: bool = False
     average_rating: float | None = None
     rating_count: int = 0
+    forecast_snapshot: SessionForecastSnapshotRead | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -197,6 +215,7 @@ class SessionDetailRead(BaseModel):
     completed_at: datetime | None = None
     average_rating: float | None = None
     rating_count: int = 0
+    forecast_snapshot: SessionForecastSnapshotRead | None = None
     participants: list[str] = Field(default_factory=list)
     invites: list[SessionInviteStatusRead] = Field(default_factory=list)
     photos: list[SessionPhotoRead] = Field(default_factory=list)

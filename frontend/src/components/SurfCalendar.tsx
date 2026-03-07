@@ -55,6 +55,29 @@ export function SurfCalendar({
   onLoadPhotos,
   onUploadPhoto
 }: Props) {
+  const windArrow = (cardinal: string | null) => {
+    switch ((cardinal ?? "").toUpperCase()) {
+      case "N":
+        return "↓";
+      case "NE":
+        return "↙";
+      case "E":
+        return "←";
+      case "SE":
+        return "↖";
+      case "S":
+        return "↑";
+      case "SW":
+        return "↗";
+      case "W":
+        return "→";
+      case "NW":
+        return "↘";
+      default:
+        return "•";
+    }
+  };
+
   const [openReportFor, setOpenReportFor] = useState<number | null>(null);
   const [openFeedbackFor, setOpenFeedbackFor] = useState<number | null>(null);
   const [openPhotosFor, setOpenPhotosFor] = useState<number | null>(null);
@@ -121,6 +144,19 @@ export function SurfCalendar({
                     ? `Completed${session.average_rating !== null ? ` · Avg ${session.average_rating.toFixed(1)}⭐ (${session.rating_count})` : " · No ratings yet"}`
                     : "Not completed yet"}
                 </p>
+                {session.forecast_snapshot ? (
+                  <div className="forecast-inline">
+                    <span className="forecast-pill">🌊 {session.forecast_snapshot.wave_height_m !== null ? `${session.forecast_snapshot.wave_height_m.toFixed(1)} m` : "n/a"}</span>
+                    <span className="forecast-pill">
+                      💨
+                      {session.forecast_snapshot.wind_speed_kmh !== null
+                        ? ` ${Math.round(session.forecast_snapshot.wind_speed_kmh)} km/h ${windArrow(session.forecast_snapshot.wind_direction_cardinal)} ${session.forecast_snapshot.wind_direction_cardinal ?? "N/A"}`
+                        : " n/a"}
+                    </span>
+                    <span className="forecast-pill">🌡️ {session.forecast_snapshot.water_temperature_c !== null ? `${session.forecast_snapshot.water_temperature_c.toFixed(1)}°C` : "n/a"}</span>
+                    <span className="forecast-pill">🌊⬍ {session.forecast_snapshot.tide_level ?? "n/a"} ({session.forecast_snapshot.tide_trend ?? "n/a"})</span>
+                  </div>
+                ) : null}
                 <p>{session.forecast_note || "Forecast note not added"}</p>
                 <p>{session.logistics_note || "Logistics note not added"}</p>
                 <div className="chip-row">

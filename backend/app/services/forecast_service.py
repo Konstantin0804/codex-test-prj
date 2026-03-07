@@ -54,11 +54,15 @@ def _nearest_non_null(values: list[float | None], preferred_idx: int) -> float |
 
 
 def _extract_hourly_series(hourly: dict, keys: list[str]) -> list[float | None]:
+    fallback: list[float | None] = []
     for key in keys:
         values = hourly.get(key)
         if isinstance(values, list):
-            return values
-    return []
+            if any(isinstance(item, (int, float)) for item in values):
+                return values
+            if not fallback:
+                fallback = values
+    return fallback
 
 
 def _cardinal_direction(deg: float | None) -> str:
@@ -95,7 +99,7 @@ def _get_with_retry(client: httpx.Client, url: str, params: dict, attempts: int 
     last_error: Exception | None = None
     for _ in range(max(attempts, 1)):
         try:
-            response = client.get(url, params=params, headers={"User-Agent": "surfcrew-planner/1.0"})
+            response = client.get(url, params=params)
             response.raise_for_status()
             return response
         except Exception as exc:
@@ -144,7 +148,7 @@ def get_open_meteo_forecast(
     weather_params = {
         "latitude": latitude,
         "longitude": longitude,
-        "hourly": "wind_speed_10m,wind_direction_10m",
+        "hourly": "wind_speed_10m,wind_direction_10m,windspeed_10m,winddirection_10m",
         "start_date": date_str,
         "end_date": date_str,
         "timezone": "auto",

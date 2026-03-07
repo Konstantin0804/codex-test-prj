@@ -26,6 +26,7 @@ from app.schemas.surf import (
     SessionInviteRead,
     SessionInviteStatusRead,
     SessionDetailRead,
+    SessionForecastSnapshotRead,
     SessionPhotoRead,
     SessionRead,
     SessionReportCreate,
@@ -69,6 +70,33 @@ from app.services.surf_service import (
 )
 
 router = APIRouter(prefix="/surf", tags=["surf"])
+
+
+def _session_forecast_snapshot(session) -> SessionForecastSnapshotRead | None:
+    if (
+        session.forecast_provider is None
+        and session.forecast_target_time is None
+        and session.forecast_summary is None
+        and session.forecast_wave_height_m is None
+        and session.forecast_wind_speed_kmh is None
+    ):
+        return None
+    return SessionForecastSnapshotRead(
+        provider=session.forecast_provider,
+        target_time=session.forecast_target_time,
+        wave_height_m=session.forecast_wave_height_m,
+        wave_direction_deg=session.forecast_wave_direction_deg,
+        wave_direction_cardinal=session.forecast_wave_direction_cardinal,
+        wave_period_s=session.forecast_wave_period_s,
+        wind_speed_kmh=session.forecast_wind_speed_kmh,
+        wind_direction_deg=session.forecast_wind_direction_deg,
+        wind_direction_cardinal=session.forecast_wind_direction_cardinal,
+        water_temperature_c=session.forecast_water_temperature_c,
+        sea_level_m=session.forecast_sea_level_m,
+        tide_level=session.forecast_tide_level,
+        tide_trend=session.forecast_tide_trend,
+        summary=session.forecast_summary,
+    )
 
 
 def _resolve_inbox_action_state(db: Session, item, current_user: User) -> tuple[str, bool]:
@@ -377,6 +405,7 @@ def get_session_detail_route(
         completed_at=session.completed_at,
         average_rating=avg,
         rating_count=count,
+        forecast_snapshot=_session_forecast_snapshot(session),
         participants=sorted(participant_usernames),
         invites=invite_rows,
         photos=photo_rows,
@@ -435,6 +464,7 @@ def post_session(
         can_complete=session.created_by == current_user.id,
         average_rating=avg,
         rating_count=count,
+        forecast_snapshot=_session_forecast_snapshot(session),
     )
 
 
@@ -472,6 +502,7 @@ def get_sessions(
             can_complete=item.created_by == current_user.id,
             average_rating=ratings.get(item.id, (None, 0))[0],
             rating_count=ratings.get(item.id, (None, 0))[1],
+            forecast_snapshot=_session_forecast_snapshot(item),
         )
         for item in sessions
     ]
@@ -502,6 +533,7 @@ def post_complete_session(
         can_complete=session.created_by == current_user.id,
         average_rating=ratings[0],
         rating_count=ratings[1],
+        forecast_snapshot=_session_forecast_snapshot(session),
     )
 
 
