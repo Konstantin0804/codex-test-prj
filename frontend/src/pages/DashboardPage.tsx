@@ -228,7 +228,7 @@ export function DashboardPage() {
               ? "Copied"
               : copyState === "error"
                 ? "Copy failed"
-                : "Share invite link"}
+                : "Share link"}
           </button>
           <button
             className="ghost control-logout"

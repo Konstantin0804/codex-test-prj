@@ -19,6 +19,8 @@ body {
   font-family: "Manrope", sans-serif;
   color: var(--ink);
   background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
 }
 
 .layout {
@@ -722,14 +724,21 @@ button.ghost {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.35);
-  display: grid;
-  place-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   z-index: 30;
   padding: 1rem;
 }
 
 .modal-wrap {
   width: min(760px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 1020px) {
@@ -778,14 +787,14 @@ button.ghost {
 
   .control-card {
     display: grid;
-    grid-template-columns: 40px 1fr 1fr;
+    grid-template-columns: 40px repeat(3, minmax(0, 1fr));
     gap: 0.45rem;
     align-items: stretch;
     padding: 0.5rem;
   }
 
   .control-card .avatar-mini {
-    grid-row: 1 / span 2;
+    grid-row: 1;
   }
 
   .control-about {
@@ -797,20 +806,34 @@ button.ghost {
   }
 
   .control-logout {
-    grid-column: 2 / 4;
+    grid-column: 4;
   }
 
   .control-card button {
     width: 100%;
-    min-height: 44px;
-    white-space: normal;
+    min-height: 40px;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    padding: 0.45rem 0.5rem;
   }
 
   .modal-wrap {
     width: min(560px, 100%);
+    max-height: calc(100vh - 1.4rem);
   }
 
   .profile-panel {
     padding: 0.85rem;
+    margin-bottom: 0;
+  }
+
+  .about-top-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }

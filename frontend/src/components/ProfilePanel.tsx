@@ -224,7 +224,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         ) : null}
         {uploadingAvatar ? <p className="tiny">Uploading avatar...</p> : null}
 
-        <div className="row-3">
+        <div className="row-2 about-top-row">
           <label>
             Age
             <input
@@ -239,21 +239,21 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
             City
             <input value={city} onChange={(event) => setCity(event.target.value)} />
           </label>
-          <label>
-            Surf Level
-            <select
-              value={surfLevel}
-              onChange={(event) => setSurfLevel(event.target.value as SurfLevel | "")}
-            >
-              <option value="">Not set</option>
-              {Object.entries(LEVEL_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
+        <label>
+          Surf Level
+          <select
+            value={surfLevel}
+            onChange={(event) => setSurfLevel(event.target.value as SurfLevel | "")}
+          >
+            <option value="">Not set</option>
+            {Object.entries(LEVEL_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
         {!validAge && age.length > 0 ? <p className="tiny error-text">Age: 8 to 90.</p> : null}
         {!validCity && city.trim().length > 0 ? (
           <p className="tiny error-text">City: minimum 2 characters.</p>
