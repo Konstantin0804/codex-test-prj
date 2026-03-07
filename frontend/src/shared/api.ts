@@ -6,7 +6,7 @@ const baseURL =
 
 export const api = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 30000,
   withCredentials: true
 });
 
@@ -20,7 +20,7 @@ export const clearAuthToken = () => {
 
 const refreshClient = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 30000,
   withCredentials: true
 });
 

@@ -23,6 +23,16 @@ const applyAuth = (payload: AuthResponse) => {
   setAuthToken(payload.access_token);
 };
 
+const authErrorMessage = (error: unknown, fallback: string): string => {
+  if (!axios.isAxiosError(error)) {
+    return fallback;
+  }
+  if (error.code === "ECONNABORTED" || error.message.toLowerCase().includes("timeout")) {
+    return "Backend is waking up on free tier. Please retry in 10-20 seconds.";
+  }
+  return (error.response?.data as { detail?: string } | undefined)?.detail ?? fallback;
+};
+
 export const login = createAsyncThunk(
   "auth/login",
   async (payload: LoginPayload, { rejectWithValue }) => {
@@ -31,10 +41,7 @@ export const login = createAsyncThunk(
       applyAuth(response.data);
       return response.data;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        return rejectWithValue(error.response?.data?.detail ?? "Login failed");
-      }
-      return rejectWithValue("Login failed");
+      return rejectWithValue(authErrorMessage(error, "Login failed"));
     }
   }
 );
@@ -60,10 +67,7 @@ export const register = createAsyncThunk(
       const response = await api.post<RegisterResponse>("/auth/register", payload);
       return response.data;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        return rejectWithValue(error.response?.data?.detail ?? "Registration failed");
-      }
-      return rejectWithValue("Registration failed");
+      return rejectWithValue(authErrorMessage(error, "Registration failed"));
     }
   }
 );
