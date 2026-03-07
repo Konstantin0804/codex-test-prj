@@ -40,6 +40,10 @@ def _b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(padded.encode("ascii"))
 
 
+def _challenge_bytes(value: str) -> bytes:
+    return _b64url_decode(value)
+
+
 def _rp_id() -> str:
     configured = (settings.public_web_url or "").strip()
     if configured:
@@ -119,13 +123,19 @@ def finish_passkey_registration(db: Session, user: User, credential: dict) -> No
     if not challenge_record or challenge_record.expires_at <= _utc_now():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passkey challenge expired")
 
-    verification = verify_registration_response(
-        credential=credential,
-        expected_challenge=challenge_record.challenge,
-        expected_rp_id=_rp_id(),
-        expected_origin=_expected_origins(),
-        require_user_verification=False,
-    )
+    try:
+        verification = verify_registration_response(
+            credential=credential,
+            expected_challenge=_challenge_bytes(challenge_record.challenge),
+            expected_rp_id=_rp_id(),
+            expected_origin=_expected_origins(),
+            require_user_verification=False,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Passkey verification failed: {exc}",
+        ) from exc
 
     credential_id = _b64url_encode(verification.credential_id)
     public_key_b64 = _b64url_encode(verification.credential_public_key)
@@ -219,15 +229,21 @@ def finish_passkey_authentication(db: Session, username: str, credential: dict) 
     if not stored:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown passkey")
 
-    verification = verify_authentication_response(
-        credential=credential,
-        expected_challenge=challenge_record.challenge,
-        expected_rp_id=_rp_id(),
-        expected_origin=_expected_origins(),
-        credential_public_key=_b64url_decode(stored.public_key_b64),
-        credential_current_sign_count=stored.sign_count,
-        require_user_verification=False,
-    )
+    try:
+        verification = verify_authentication_response(
+            credential=credential,
+            expected_challenge=_challenge_bytes(challenge_record.challenge),
+            expected_rp_id=_rp_id(),
+            expected_origin=_expected_origins(),
+            credential_public_key=_b64url_decode(stored.public_key_b64),
+            credential_current_sign_count=stored.sign_count,
+            require_user_verification=False,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Passkey login failed: {exc}",
+        ) from exc
 
     stored.sign_count = int(verification.new_sign_count)
     stored.last_used_at = _utc_now()
