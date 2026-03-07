@@ -18,6 +18,8 @@ from app.schemas.surf import (
     JoinInvitePayload,
     RSVPUpdate,
     SessionCreate,
+    SessionFeedbackCreate,
+    SessionFeedbackRead,
     SessionInviteCreate,
     SessionInviteRead,
     SessionPhotoRead,
@@ -28,6 +30,7 @@ from app.schemas.surf import (
 )
 from app.services.surf_service import (
     accept_friend_request,
+    complete_session,
     accept_session_invite,
     create_friend_request,
     create_group,
@@ -35,6 +38,7 @@ from app.services.surf_service import (
     create_report,
     create_session_invite,
     create_session,
+    upsert_session_feedback,
     get_group_detail,
     join_by_code,
     list_incoming_friend_requests,
@@ -44,9 +48,11 @@ from app.services.surf_service import (
     list_groups,
     list_reports,
     list_session_photos,
+    list_session_feedback,
     list_sessions,
     mark_inbox_read,
     my_rsvp_map,
+    session_rating_summary_map,
     add_session_photo,
     set_rsvp,
 )
@@ -235,6 +241,7 @@ def get_sessions(
         sessions = [item for item in sessions if item.session_date <= date_to]
 
     rsvp = my_rsvp_map(db, [item.id for item in sessions], current_user.id)
+    ratings = session_rating_summary_map(db, [item.id for item in sessions])
     return [
         SessionRead(
             id=item.id,
@@ -247,9 +254,42 @@ def get_sessions(
             logistics_note=item.logistics_note,
             created_at=item.created_at,
             my_rsvp=rsvp.get(item.id),
+            is_completed=item.completed_at is not None,
+            completed_at=item.completed_at,
+            can_complete=item.created_by == current_user.id,
+            average_rating=ratings.get(item.id, (None, 0))[0],
+            rating_count=ratings.get(item.id, (None, 0))[1],
         )
         for item in sessions
     ]
+
+
+@router.post("/sessions/{session_id}/complete", response_model=SessionRead)
+def post_complete_session(
+    session_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionRead:
+    session = complete_session(db, session_id, current_user)
+    ratings = session_rating_summary_map(db, [session.id]).get(session.id, (None, 0))
+    my_rsvp = my_rsvp_map(db, [session.id], current_user.id).get(session.id)
+    return SessionRead(
+        id=session.id,
+        group_id=session.group_id,
+        spot_name=session.spot_name,
+        session_date=session.session_date,
+        meeting_time=session.meeting_time,
+        level=session.level,
+        forecast_note=session.forecast_note,
+        logistics_note=session.logistics_note,
+        created_at=session.created_at,
+        my_rsvp=my_rsvp,
+        is_completed=session.completed_at is not None,
+        completed_at=session.completed_at,
+        can_complete=session.created_by == current_user.id,
+        average_rating=ratings[0],
+        rating_count=ratings[1],
+    )
 
 
 @router.patch("/sessions/{session_id}/rsvp")
@@ -310,6 +350,44 @@ def get_reports(
             created_at=report.created_at,
         )
         for report, user in records
+    ]
+
+
+@router.post("/sessions/{session_id}/feedback", response_model=SessionFeedbackRead)
+def post_session_feedback(
+    session_id: int,
+    payload: SessionFeedbackCreate,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionFeedbackRead:
+    row = upsert_session_feedback(db, session_id, current_user, payload.stars, payload.comment)
+    return SessionFeedbackRead(
+        id=row.id,
+        session_id=row.session_id,
+        username=current_user.username,
+        stars=row.stars,
+        comment=row.comment,
+        updated_at=row.updated_at,
+    )
+
+
+@router.get("/sessions/{session_id}/feedback", response_model=list[SessionFeedbackRead])
+def get_session_feedback_route(
+    session_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[SessionFeedbackRead]:
+    rows = list_session_feedback(db, session_id, current_user)
+    return [
+        SessionFeedbackRead(
+            id=feedback.id,
+            session_id=feedback.session_id,
+            username=user.username,
+            stars=feedback.stars,
+            comment=feedback.comment,
+            updated_at=feedback.updated_at,
+        )
+        for feedback, user in rows
     ]
 
 

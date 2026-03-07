@@ -101,6 +101,7 @@ class SurfSession(Base):
     level: Mapped[SessionLevel] = mapped_column(Enum(SessionLevel), default=SessionLevel.mixed, nullable=False)
     forecast_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
     logistics_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
@@ -127,6 +128,18 @@ class SessionReport(Base):
     wind_score: Mapped[int] = mapped_column(Integer, nullable=False)
     note: Mapped[str] = mapped_column(Text, default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class SessionFeedback(Base):
+    __tablename__ = "session_feedback"
+    __table_args__ = (UniqueConstraint("session_id", "user_id", name="uq_session_feedback_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("surf_sessions.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    stars: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    comment: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class SessionPhoto(Base):

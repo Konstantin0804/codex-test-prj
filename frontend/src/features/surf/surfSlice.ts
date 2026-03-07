@@ -5,6 +5,7 @@ import type {
   GroupCreatePayload,
   InboxItem,
   ReportCreatePayload,
+  SessionFeedback,
   SessionPhoto,
   SessionInvite,
   SessionCreatePayload,
@@ -21,6 +22,7 @@ const initialState: SurfState = {
   selectedGroupId: null,
   sessions: [],
   reportsBySession: {},
+  feedbackBySession: {},
   photosBySession: {},
   invitesBySession: {},
   invitesByGroup: {},
@@ -37,6 +39,9 @@ const initialState: SurfState = {
   loadingInbox: false,
   rsvpLoadingIds: [],
   reportLoadingIds: [],
+  feedbackLoadingIds: [],
+  feedbackSavingIds: [],
+  completingSessionIds: [],
   photoLoadingIds: [],
   photoUploadingIds: [],
   error: null
@@ -129,6 +134,38 @@ export const fetchReports = createAsyncThunk("surf/fetchReports", async (session
   const response = await api.get<SessionReport[]>(`/surf/sessions/${sessionId}/reports`);
   return { sessionId, reports: response.data };
 });
+
+export const completeSession = createAsyncThunk("surf/completeSession", async (sessionId: number) => {
+  const response = await api.post<SurfSession>(`/surf/sessions/${sessionId}/complete`);
+  return response.data;
+});
+
+export const fetchSessionFeedback = createAsyncThunk(
+  "surf/fetchSessionFeedback",
+  async (sessionId: number) => {
+    const response = await api.get<SessionFeedback[]>(`/surf/sessions/${sessionId}/feedback`);
+    return { sessionId, feedback: response.data };
+  }
+);
+
+export const upsertSessionFeedback = createAsyncThunk(
+  "surf/upsertSessionFeedback",
+  async ({
+    sessionId,
+    stars,
+    comment
+  }: {
+    sessionId: number;
+    stars: number | null;
+    comment: string;
+  }) => {
+    const response = await api.post<SessionFeedback>(`/surf/sessions/${sessionId}/feedback`, {
+      stars,
+      comment
+    });
+    return response.data;
+  }
+);
 
 export const fetchSessionPhotos = createAsyncThunk(
   "surf/fetchSessionPhotos",
@@ -324,6 +361,49 @@ const surfSlice = createSlice({
       })
       .addCase(fetchReports.fulfilled, (state, action) => {
         state.reportsBySession[action.payload.sessionId] = action.payload.reports;
+      })
+      .addCase(completeSession.pending, (state, action) => {
+        state.completingSessionIds.push(action.meta.arg);
+      })
+      .addCase(completeSession.fulfilled, (state, action) => {
+        state.completingSessionIds = state.completingSessionIds.filter((id) => id !== action.payload.id);
+        const index = state.sessions.findIndex((session) => session.id === action.payload.id);
+        if (index >= 0) {
+          state.sessions[index] = action.payload;
+        }
+      })
+      .addCase(completeSession.rejected, (state, action) => {
+        state.completingSessionIds = state.completingSessionIds.filter((id) => id !== action.meta.arg);
+        state.error = action.error.message ?? "Failed to complete session";
+      })
+      .addCase(fetchSessionFeedback.pending, (state, action) => {
+        state.feedbackLoadingIds.push(action.meta.arg);
+      })
+      .addCase(fetchSessionFeedback.fulfilled, (state, action) => {
+        state.feedbackLoadingIds = state.feedbackLoadingIds.filter((id) => id !== action.payload.sessionId);
+        state.feedbackBySession[action.payload.sessionId] = action.payload.feedback;
+      })
+      .addCase(fetchSessionFeedback.rejected, (state, action) => {
+        state.feedbackLoadingIds = state.feedbackLoadingIds.filter((id) => id !== action.meta.arg);
+        state.error = action.error.message ?? "Failed to load feedback";
+      })
+      .addCase(upsertSessionFeedback.pending, (state, action) => {
+        state.feedbackSavingIds.push(action.meta.arg.sessionId);
+      })
+      .addCase(upsertSessionFeedback.fulfilled, (state, action) => {
+        state.feedbackSavingIds = state.feedbackSavingIds.filter((id) => id !== action.payload.session_id);
+        const list = state.feedbackBySession[action.payload.session_id] ?? [];
+        const existingIndex = list.findIndex((item) => item.id === action.payload.id);
+        if (existingIndex >= 0) {
+          list[existingIndex] = action.payload;
+        } else {
+          list.unshift(action.payload);
+        }
+        state.feedbackBySession[action.payload.session_id] = list;
+      })
+      .addCase(upsertSessionFeedback.rejected, (state, action) => {
+        state.feedbackSavingIds = state.feedbackSavingIds.filter((id) => id !== action.meta.arg.sessionId);
+        state.error = action.error.message ?? "Failed to save feedback";
       })
       .addCase(createReport.pending, (state, action) => {
         state.reportLoadingIds.push(action.meta.arg.sessionId);

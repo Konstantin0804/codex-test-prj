@@ -93,6 +93,11 @@ class SessionRead(BaseModel):
     logistics_note: str
     created_at: datetime
     my_rsvp: RSVPStatus | None = None
+    is_completed: bool = False
+    completed_at: datetime | None = None
+    can_complete: bool = False
+    average_rating: float | None = None
+    rating_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -118,6 +123,20 @@ class SessionReportRead(BaseModel):
     wind_score: int
     note: str
     created_at: datetime
+
+
+class SessionFeedbackCreate(BaseModel):
+    stars: int | None = Field(default=None, ge=0, le=5)
+    comment: str = ""
+
+
+class SessionFeedbackRead(BaseModel):
+    id: int
+    session_id: int
+    username: str
+    stars: int | None = None
+    comment: str
+    updated_at: datetime
 
 
 class SessionPhotoRead(BaseModel):

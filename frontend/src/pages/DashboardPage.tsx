@@ -18,7 +18,9 @@ import {
   createInvite,
   createReport,
   createSession,
+  completeSession,
   fetchFriends,
+  fetchSessionFeedback,
   fetchInbox,
   fetchGroups,
   fetchReports,
@@ -29,6 +31,7 @@ import {
   selectGroup,
   sendSessionInvite,
   uploadSessionPhoto,
+  upsertSessionFeedback,
   setRsvp
 } from "../features/surf/surfSlice";
 import type { ReportCreatePayload, SessionCreatePayload } from "../features/surf/types";
@@ -47,6 +50,7 @@ export function DashboardPage() {
     selectedGroupId,
     sessions,
     reportsBySession,
+    feedbackBySession,
     photosBySession,
     invitesByGroup,
     inbox,
@@ -62,6 +66,9 @@ export function DashboardPage() {
     acceptingInviteIds,
     rsvpLoadingIds,
     reportLoadingIds,
+    feedbackLoadingIds,
+    feedbackSavingIds,
+    completingSessionIds,
     photoLoadingIds,
     photoUploadingIds,
     error
@@ -172,6 +179,25 @@ export function DashboardPage() {
 
   const handleLoadReports = async (sessionId: number) => {
     await dispatch(fetchReports(sessionId));
+  };
+
+  const handleCompleteSession = async (sessionId: number) => {
+    const result = await dispatch(completeSession(sessionId));
+    if (completeSession.fulfilled.match(result) && selectedGroupId) {
+      await dispatch(fetchSessions(selectedGroupId));
+    }
+  };
+
+  const handleLoadFeedback = async (sessionId: number) => {
+    await dispatch(fetchSessionFeedback(sessionId));
+  };
+
+  const handleSubmitFeedback = async (sessionId: number, stars: number | null, comment: string) => {
+    await dispatch(upsertSessionFeedback({ sessionId, stars, comment }));
+    if (selectedGroupId) {
+      await dispatch(fetchSessions(selectedGroupId));
+    }
+    await dispatch(fetchSessionFeedback(sessionId));
   };
 
   const handleLoadPhotos = async (sessionId: number) => {
@@ -300,14 +326,21 @@ export function DashboardPage() {
                 rsvpLoadingIds={rsvpLoadingIds}
                 reportLoadingIds={reportLoadingIds}
                 reportsBySession={reportsBySession}
+                feedbackBySession={feedbackBySession}
                 photosBySession={photosBySession}
                 sendingInvite={sendingSessionInvite}
+                feedbackLoadingIds={feedbackLoadingIds}
+                feedbackSavingIds={feedbackSavingIds}
+                completingSessionIds={completingSessionIds}
                 photoLoadingIds={photoLoadingIds}
                 photoUploadingIds={photoUploadingIds}
                 onSendInvite={handleSendInvite}
                 onRsvp={handleRsvp}
+                onCompleteSession={handleCompleteSession}
                 onCreateReport={handleCreateReport}
                 onLoadReports={handleLoadReports}
+                onLoadFeedback={handleLoadFeedback}
+                onSubmitFeedback={handleSubmitFeedback}
                 onLoadPhotos={handleLoadPhotos}
                 onUploadPhoto={handleUploadPhoto}
               />

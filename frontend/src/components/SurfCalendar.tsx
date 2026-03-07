@@ -1,23 +1,30 @@
 import { FormEvent, useMemo, useState } from "react";
-import type { SessionPhoto, SessionReport, SurfSession } from "../features/surf/types";
+import type { SessionFeedback, SessionPhoto, SessionReport, SurfSession } from "../features/surf/types";
 
 interface Props {
   sessions: SurfSession[];
   loading: boolean;
   rsvpLoadingIds: number[];
   reportLoadingIds: number[];
+  feedbackLoadingIds: number[];
+  feedbackSavingIds: number[];
+  completingSessionIds: number[];
   reportsBySession: Record<number, SessionReport[]>;
+  feedbackBySession: Record<number, SessionFeedback[]>;
   photosBySession: Record<number, SessionPhoto[]>;
   sendingInvite: boolean;
   photoLoadingIds: number[];
   photoUploadingIds: number[];
   onSendInvite: (sessionId: number, username?: string, telegramUsername?: string) => Promise<void>;
   onRsvp: (sessionId: number, status: "going" | "maybe" | "not_going") => Promise<void>;
+  onCompleteSession: (sessionId: number) => Promise<void>;
   onCreateReport: (
     sessionId: number,
     payload: { wave_score: number; crowd_score: number; wind_score: number; note: string }
   ) => Promise<void>;
   onLoadReports: (sessionId: number) => Promise<void>;
+  onLoadFeedback: (sessionId: number) => Promise<void>;
+  onSubmitFeedback: (sessionId: number, stars: number | null, comment: string) => Promise<void>;
   onLoadPhotos: (sessionId: number) => Promise<void>;
   onUploadPhoto: (sessionId: number, file: File) => Promise<void>;
 }
@@ -27,21 +34,33 @@ export function SurfCalendar({
   loading,
   rsvpLoadingIds,
   reportLoadingIds,
+  feedbackLoadingIds,
+  feedbackSavingIds,
+  completingSessionIds,
   reportsBySession,
+  feedbackBySession,
   photosBySession,
   sendingInvite,
   photoLoadingIds,
   photoUploadingIds,
   onSendInvite,
   onRsvp,
+  onCompleteSession,
   onCreateReport,
   onLoadReports,
+  onLoadFeedback,
+  onSubmitFeedback,
   onLoadPhotos,
   onUploadPhoto
 }: Props) {
   const [openReportFor, setOpenReportFor] = useState<number | null>(null);
+  const [openFeedbackFor, setOpenFeedbackFor] = useState<number | null>(null);
   const [openPhotosFor, setOpenPhotosFor] = useState<number | null>(null);
   const [formState, setFormState] = useState({ wave_score: 7, crowd_score: 6, wind_score: 7, note: "" });
+  const [feedbackForm, setFeedbackForm] = useState<{ stars: number | null; comment: string }>({
+    stars: null,
+    comment: ""
+  });
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteTelegram, setInviteTelegram] = useState("");
   const [photoFiles, setPhotoFiles] = useState<Record<number, File | null>>({});
@@ -79,6 +98,11 @@ export function SurfCalendar({
                   <span>{session.meeting_time ?? "No meet time"}</span>
                 </div>
                 <p className="tiny">Level: {session.level}</p>
+                <p className="tiny">
+                  {session.is_completed
+                    ? `Completed${session.average_rating !== null ? ` · Avg ${session.average_rating.toFixed(1)}⭐ (${session.rating_count})` : " · No ratings yet"}`
+                    : "Not completed yet"}
+                </p>
                 <p>{session.forecast_note || "Forecast note not added"}</p>
                 <p>{session.logistics_note || "Logistics note not added"}</p>
                 <div className="chip-row">
@@ -114,6 +138,32 @@ export function SurfCalendar({
                   </button>
                   <button
                     className="ghost"
+                    disabled={!session.can_complete || session.is_completed || completingSessionIds.includes(session.id)}
+                    onClick={async () => {
+                      const ok = window.confirm("Complete this session?");
+                      if (!ok) {
+                        return;
+                      }
+                      await onCompleteSession(session.id);
+                    }}
+                  >
+                    {completingSessionIds.includes(session.id) ? "Completing..." : "Complete"}
+                  </button>
+                  <button
+                    className="ghost"
+                    disabled={!session.is_completed}
+                    onClick={async () => {
+                      const next = openFeedbackFor === session.id ? null : session.id;
+                      setOpenFeedbackFor(next);
+                      if (next !== null) {
+                        await onLoadFeedback(session.id);
+                      }
+                    }}
+                  >
+                    Feedback
+                  </button>
+                  <button
+                    className="ghost"
                     onClick={async () => {
                       setOpenPhotosFor(openPhotosFor === session.id ? null : session.id);
                       await onLoadPhotos(session.id);
@@ -122,6 +172,67 @@ export function SurfCalendar({
                     Photos
                   </button>
                 </div>
+
+                {openFeedbackFor === session.id ? (
+                  <div className="report-area">
+                    <form
+                      onSubmit={async (event) => {
+                        event.preventDefault();
+                        await onSubmitFeedback(session.id, feedbackForm.stars, feedbackForm.comment);
+                        setFeedbackForm({ stars: null, comment: "" });
+                      }}
+                      className="report-form"
+                    >
+                      <div className="row-2">
+                        <label>
+                          Stars (0-5)
+                          <select
+                            value={feedbackForm.stars === null ? "" : String(feedbackForm.stars)}
+                            onChange={(event) =>
+                              setFeedbackForm((prev) => ({
+                                ...prev,
+                                stars: event.target.value === "" ? null : Number(event.target.value)
+                              }))
+                            }
+                          >
+                            <option value="">No stars</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                          </select>
+                        </label>
+                        <label>
+                          Comment
+                          <input
+                            value={feedbackForm.comment}
+                            onChange={(event) =>
+                              setFeedbackForm((prev) => ({ ...prev, comment: event.target.value }))
+                            }
+                            placeholder="Optional note"
+                          />
+                        </label>
+                      </div>
+                      <button disabled={feedbackSavingIds.includes(session.id)} type="submit">
+                        {feedbackSavingIds.includes(session.id) ? "Saving..." : "Save feedback"}
+                      </button>
+                    </form>
+                    {feedbackLoadingIds.includes(session.id) ? <p className="tiny">Loading feedback...</p> : null}
+                    <div className="report-list">
+                      {(feedbackBySession[session.id] ?? []).map((item) => (
+                        <div key={item.id} className="report-item">
+                          <p>
+                            <strong>@{item.username}</strong>
+                            {item.stars !== null ? ` · ${item.stars}⭐` : ""}
+                          </p>
+                          {item.comment ? <p className="tiny">{item.comment}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="invite-row">
                   <input
                     placeholder="Invite by username"

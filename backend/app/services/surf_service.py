@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
@@ -18,6 +18,7 @@ from app.models.surf import (
     InviteStatus,
     SessionInvite,
     SessionInviteStatus,
+    SessionFeedback,
     SessionPhoto,
     SessionReport,
     SessionRSVP,
@@ -341,6 +342,39 @@ def list_sessions(db: Session, group_id: int, user: User) -> list[SurfSession]:
     return list(db.scalars(stmt).all())
 
 
+def session_rating_summary_map(db: Session, session_ids: list[int]) -> dict[int, tuple[float | None, int]]:
+    if not session_ids:
+        return {}
+    stmt = (
+        select(
+            SessionFeedback.session_id,
+            func.avg(SessionFeedback.stars).label("avg_stars"),
+            func.count(SessionFeedback.stars).label("rated_count"),
+        )
+        .where(SessionFeedback.session_id.in_(session_ids), SessionFeedback.stars.is_not(None))
+        .group_by(SessionFeedback.session_id)
+    )
+    result: dict[int, tuple[float | None, int]] = {}
+    for session_id, avg_stars, rated_count in db.execute(stmt).all():
+        result[int(session_id)] = (float(avg_stars) if avg_stars is not None else None, int(rated_count or 0))
+    return result
+
+
+def complete_session(db: Session, session_id: int, user: User) -> SurfSession:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+    if session.created_by != user.id:
+        raise HTTPException(status_code=403, detail="Only session owner can complete session")
+    if session.completed_at is None:
+        session.completed_at = _now()
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+    return session
+
+
 def create_session_invite(
     db: Session,
     session_id: int,
@@ -620,6 +654,59 @@ def list_reports(db: Session, session_id: int, user: User) -> list[tuple[Session
         .join(User, User.id == SessionReport.user_id)
         .where(SessionReport.session_id == session_id)
         .order_by(SessionReport.created_at.desc())
+    )
+    return list(db.execute(stmt).all())
+
+
+def upsert_session_feedback(
+    db: Session,
+    session_id: int,
+    user: User,
+    stars: int | None,
+    comment: str,
+) -> SessionFeedback:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+    if session.completed_at is None:
+        raise HTTPException(status_code=400, detail="Session must be completed first")
+
+    cleaned_comment = (comment or "").strip()
+    if stars is None and not cleaned_comment:
+        raise HTTPException(status_code=422, detail="Provide stars or a comment")
+
+    existing = db.scalar(
+        select(SessionFeedback).where(
+            SessionFeedback.session_id == session_id,
+            SessionFeedback.user_id == user.id,
+        )
+    )
+    if not existing:
+        existing = SessionFeedback(session_id=session_id, user_id=user.id, stars=stars, comment=cleaned_comment)
+        db.add(existing)
+    else:
+        existing.stars = stars
+        existing.comment = cleaned_comment
+        existing.updated_at = _now()
+        db.add(existing)
+
+    db.commit()
+    db.refresh(existing)
+    return existing
+
+
+def list_session_feedback(db: Session, session_id: int, user: User) -> list[tuple[SessionFeedback, User]]:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+
+    stmt = (
+        select(SessionFeedback, User)
+        .join(User, User.id == SessionFeedback.user_id)
+        .where(SessionFeedback.session_id == session_id)
+        .order_by(SessionFeedback.updated_at.desc())
     )
     return list(db.execute(stmt).all())
 

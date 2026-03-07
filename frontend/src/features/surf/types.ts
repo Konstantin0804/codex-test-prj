@@ -33,6 +33,11 @@ export interface SurfSession {
   logistics_note: string;
   created_at: string;
   my_rsvp: RSVPStatus | null;
+  is_completed: boolean;
+  completed_at: string | null;
+  can_complete: boolean;
+  average_rating: number | null;
+  rating_count: number;
 }
 
 export interface SessionReport {
@@ -44,6 +49,15 @@ export interface SessionReport {
   wind_score: number;
   note: string;
   created_at: string;
+}
+
+export interface SessionFeedback {
+  id: number;
+  session_id: number;
+  username: string;
+  stars: number | null;
+  comment: string;
+  updated_at: string;
 }
 
 export interface SessionPhoto {
@@ -105,6 +119,7 @@ export interface SurfState {
   selectedGroupId: number | null;
   sessions: SurfSession[];
   reportsBySession: Record<number, SessionReport[]>;
+  feedbackBySession: Record<number, SessionFeedback[]>;
   photosBySession: Record<number, SessionPhoto[]>;
   invitesBySession: Record<number, SessionInvite[]>;
   invitesByGroup: Record<number, SurfInvite | null>;
@@ -121,6 +136,9 @@ export interface SurfState {
   loadingInbox: boolean;
   rsvpLoadingIds: number[];
   reportLoadingIds: number[];
+  feedbackLoadingIds: number[];
+  feedbackSavingIds: number[];
+  completingSessionIds: number[];
   photoLoadingIds: number[];
   photoUploadingIds: number[];
   error: string | null;
