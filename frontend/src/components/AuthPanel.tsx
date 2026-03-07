@@ -14,6 +14,8 @@ function normalizeTelegramHandleInput(value: string): string {
   return `@${withoutAts}`;
 }
 
+const LAST_USERNAME_KEY = "surfcrew_last_username";
+
 export function AuthPanel() {
   const dispatch = useAppDispatch();
   const { loading, error, registerMessage, registerBotLink } = useAppSelector(
@@ -41,6 +43,17 @@ export function AuthPanel() {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LAST_USERNAME_KEY);
+      if (stored && stored.trim().length >= 3) {
+        setUsername(stored.trim().toLowerCase());
+      }
+    } catch {
+      // ignore storage failures
+    }
+  }, []);
+
+  useEffect(() => {
     if (forgotCooldownSeconds <= 0) {
       return;
     }
@@ -56,7 +69,14 @@ export function AuthPanel() {
     setLocalStatus(null);
 
     if (mode === "login") {
-      await dispatch(login({ username, password }));
+      const result = await dispatch(login({ username, password }));
+      if (login.fulfilled.match(result)) {
+        try {
+          window.localStorage.setItem(LAST_USERNAME_KEY, username.trim().toLowerCase());
+        } catch {
+          // ignore storage failures
+        }
+      }
       return;
     }
     if (mode === "forgot") {
@@ -155,6 +175,11 @@ export function AuthPanel() {
         credential: serializeAuthenticationCredential(cred),
       });
       dispatch(applySession(verifyRes.data));
+      try {
+        window.localStorage.setItem(LAST_USERNAME_KEY, username.trim().toLowerCase());
+      } catch {
+        // ignore storage failures
+      }
     } catch (err: any) {
       setLocalError(err?.response?.data?.detail ?? "Passkey login failed");
     } finally {
