@@ -108,7 +108,10 @@ def get_open_meteo_forecast(
     key = _cache_key(spot_name, session_date, meeting_time)
     cached = _cache.get(key)
     if cached and (_now_utc() - cached[0]).total_seconds() < _CACHE_TTL_SECONDS:
-        return cached[1]
+        cached_payload = cached[1]
+        # Do not serve cached incomplete wind data; re-fetch to avoid sticky wind n/a.
+        if cached_payload.get("wind_speed_kmh") is not None or cached_payload.get("wind_direction_deg") is not None:
+            return cached_payload
 
     latitude, longitude = SURF_SPOT_COORDS[spot_name]
     target_time = meeting_time or time(6, 0)
@@ -241,7 +244,7 @@ def get_open_meteo_forecast(
         "summary": summary,
     }
     # Do not cache incomplete weather responses to avoid sticky "wind n/a" after transient upstream issues.
-    weather_has_data = bool(weather_times) and any(isinstance(v, (int, float)) for v in wind_speeds)
-    if weather_has_data or not marine_error:
+    wind_is_available = isinstance(wind_speed, (int, float)) or isinstance(wind_direction, (int, float))
+    if wind_is_available:
         _cache[key] = (_now_utc(), payload)
     return payload
