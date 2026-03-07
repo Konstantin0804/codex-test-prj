@@ -66,7 +66,6 @@ export function SurfCalendar({
   const [feedbackEditedFor, setFeedbackEditedFor] = useState<number | null>(null);
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteTelegram, setInviteTelegram] = useState("");
-  const [photoFiles, setPhotoFiles] = useState<Record<number, File | null>>({});
 
   useEffect(() => {
     if (openFeedbackFor === null || feedbackEditedFor === openFeedbackFor) {
@@ -379,32 +378,44 @@ export function SurfCalendar({
                 {openPhotosFor === session.id ? (
                   <div className="photo-area">
                     <div className="photo-upload-row">
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                        onChange={(event) =>
-                          setPhotoFiles((prev) => ({
-                            ...prev,
-                            [session.id]: event.target.files?.[0] ?? null
-                          }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        disabled={
-                          photoUploadingIds.includes(session.id) || !photoFiles[session.id]
-                        }
-                        onClick={async () => {
-                          const file = photoFiles[session.id];
-                          if (!file) {
-                            return;
-                          }
-                          await onUploadPhoto(session.id, file);
-                          setPhotoFiles((prev) => ({ ...prev, [session.id]: null }));
-                        }}
-                      >
-                        {photoUploadingIds.includes(session.id) ? "Uploading..." : "Upload photo"}
-                      </button>
+                      <div className="photo-upload-actions">
+                        <label className="avatar-upload-btn" htmlFor={`session-photo-${session.id}`}>
+                          {photoUploadingIds.includes(session.id) ? "Uploading..." : "Upload session photo"}
+                        </label>
+                        <input
+                          id={`session-photo-${session.id}`}
+                          className="avatar-upload-input"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                          disabled={photoUploadingIds.includes(session.id)}
+                          onChange={async (event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) {
+                              return;
+                            }
+                            await onUploadPhoto(session.id, file);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                        <label className="avatar-upload-btn" htmlFor={`forecast-photo-${session.id}`}>
+                          {photoUploadingIds.includes(session.id) ? "Uploading..." : "Upload forecast screenshot"}
+                        </label>
+                        <input
+                          id={`forecast-photo-${session.id}`}
+                          className="avatar-upload-input"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                          disabled={photoUploadingIds.includes(session.id)}
+                          onChange={async (event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) {
+                              return;
+                            }
+                            await onUploadPhoto(session.id, file);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </div>
                     </div>
                     {photoLoadingIds.includes(session.id) ? (
                       <p className="tiny">Loading photos...</p>

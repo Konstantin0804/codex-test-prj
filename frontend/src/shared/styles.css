@@ -389,8 +389,15 @@ body {
 }
 
 .photo-upload-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+}
+
+.photo-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.45rem;
   align-items: center;
 }

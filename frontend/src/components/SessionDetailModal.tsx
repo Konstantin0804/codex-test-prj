@@ -41,7 +41,6 @@ export function SessionDetailModal({ sessionId, onClose }: Props) {
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
 
   const load = async () => {
     try {
@@ -56,7 +55,7 @@ export function SessionDetailModal({ sessionId, onClose }: Props) {
     void load();
   }, [sessionId]);
 
-  const uploadPhoto = async () => {
+  const uploadPhoto = async (file: File) => {
     if (!file) {
       return;
     }
@@ -65,7 +64,6 @@ export function SessionDetailModal({ sessionId, onClose }: Props) {
       const form = new FormData();
       form.append("photo", file);
       await api.post(`/surf/sessions/${sessionId}/photos`, form);
-      setFile(null);
       await load();
     } finally {
       setUploading(false);
@@ -124,14 +122,44 @@ export function SessionDetailModal({ sessionId, onClose }: Props) {
 
               <h4>Photos</h4>
               <div className="photo-upload-row">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                />
-                <button type="button" onClick={() => void uploadPhoto()} disabled={uploading || !file}>
-                  {uploading ? "Uploading..." : "Upload"}
-                </button>
+                <div className="photo-upload-actions">
+                  <label className="avatar-upload-btn" htmlFor={`detail-session-photo-${sessionId}`}>
+                    {uploading ? "Uploading..." : "Upload session photo"}
+                  </label>
+                  <input
+                    id={`detail-session-photo-${sessionId}`}
+                    className="avatar-upload-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                    disabled={uploading}
+                    onChange={async (event) => {
+                      const selected = event.target.files?.[0];
+                      if (!selected) {
+                        return;
+                      }
+                      await uploadPhoto(selected);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                  <label className="avatar-upload-btn" htmlFor={`detail-forecast-photo-${sessionId}`}>
+                    {uploading ? "Uploading..." : "Upload forecast screenshot"}
+                  </label>
+                  <input
+                    id={`detail-forecast-photo-${sessionId}`}
+                    className="avatar-upload-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                    disabled={uploading}
+                    onChange={async (event) => {
+                      const selected = event.target.files?.[0];
+                      if (!selected) {
+                        return;
+                      }
+                      await uploadPhoto(selected);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </div>
               </div>
               <div className="photo-deck">
                 {detail.photos.map((photo, index) => (
