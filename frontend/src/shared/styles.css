@@ -817,6 +817,16 @@ button.ghost {
   margin-bottom: 0.7rem;
 }
 
+.auth-submit-btn,
+.auth-switch-btn {
+  width: 100%;
+}
+
+.loading-dots {
+  display: inline-block;
+  min-width: 1.5ch;
+}
+
 .verify-box {
   border: 1px dashed var(--border);
   border-radius: 12px;

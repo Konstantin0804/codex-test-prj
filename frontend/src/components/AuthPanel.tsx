@@ -123,12 +123,12 @@ export function AuthPanel() {
               Open bot manually, press Start, then login.
             </p>
           ) : null}
-          <button type="submit" disabled={submitDisabled}>
+          <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
             {loading ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}
           </button>
         </form>
         <button
-          className="ghost"
+          className="ghost auth-switch-btn"
           disabled={continueDisabled}
           onClick={() => setMode((current) => (current === "login" ? "register" : "login"))}
         >

@@ -48,6 +48,7 @@ export function DashboardPage() {
   const [crewModalGroupId, setCrewModalGroupId] = useState<number | null>(null);
   const [sessionDetailId, setSessionDetailId] = useState<number | null>(null);
   const [inboxDetailsOpen, setInboxDetailsOpen] = useState(false);
+  const [checkingDots, setCheckingDots] = useState(1);
   const {
     groups,
     friends,
@@ -116,11 +117,26 @@ export function DashboardPage() {
     void loadAvatar();
   }, [token]);
 
+  useEffect(() => {
+    if (token || sessionChecked) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setCheckingDots((current) => (current >= 3 ? 1 : current + 1));
+    }, 420);
+    return () => window.clearInterval(timer);
+  }, [token, sessionChecked]);
+
   if (!token && !sessionChecked) {
     return (
       <main className="layout auth-layout">
         <section className="card auth-card">
-          <h1>Checking session...</h1>
+          <h1>
+            Checking session
+            <span className="loading-dots" aria-hidden="true">
+              {".".repeat(checkingDots)}
+            </span>
+          </h1>
         </section>
       </main>
     );
