@@ -146,11 +146,11 @@ def get_open_meteo_forecast(
             detail = f"Failed to load Open-Meteo forecast (marine: {marine_error or 'ok'}; weather: {weather_error or 'ok'})"
         raise HTTPException(status_code=502, detail=detail)
 
-    times = marine.get("time") or weather.get("time") or []
-    if not times:
+    marine_times: list[str] = marine.get("time") or []
+    weather_times: list[str] = weather.get("time") or []
+    base_times = marine_times or weather_times
+    if not base_times:
         raise HTTPException(status_code=502, detail="Forecast data missing")
-
-    idx = _closest_index(times, target_time)
     sea_levels: list[float | None] = marine.get("sea_level_height_msl", [])
     wave_heights: list[float | None] = marine.get("wave_height", [])
     wave_directions: list[float | None] = marine.get("wave_direction", [])
@@ -159,19 +159,22 @@ def get_open_meteo_forecast(
     wind_speeds: list[float | None] = weather.get("wind_speed_10m", [])
     wind_dirs: list[float | None] = weather.get("wind_direction_10m", [])
 
-    current_sea = sea_levels[idx] if idx < len(sea_levels) else None
-    prev_sea = sea_levels[idx - 1] if idx - 1 >= 0 and idx - 1 < len(sea_levels) else None
-    next_sea = sea_levels[idx + 1] if idx + 1 < len(sea_levels) else None
+    marine_idx = _closest_index(marine_times, target_time) if marine_times else -1
+    weather_idx = _closest_index(weather_times, target_time) if weather_times else -1
+
+    current_sea = sea_levels[marine_idx] if marine_idx >= 0 and marine_idx < len(sea_levels) else None
+    prev_sea = sea_levels[marine_idx - 1] if marine_idx - 1 >= 0 and marine_idx - 1 < len(sea_levels) else None
+    next_sea = sea_levels[marine_idx + 1] if marine_idx + 1 < len(sea_levels) else None
     sea_numeric = [v for v in sea_levels if isinstance(v, (int, float))]
     sea_min = min(sea_numeric) if sea_numeric else None
     sea_max = max(sea_numeric) if sea_numeric else None
 
-    wave_height = wave_heights[idx] if idx < len(wave_heights) else None
-    wave_direction = wave_directions[idx] if idx < len(wave_directions) else None
-    wave_period = wave_periods[idx] if idx < len(wave_periods) else None
-    water_temp = water_temps[idx] if idx < len(water_temps) else None
-    wind_speed = wind_speeds[idx] if idx < len(wind_speeds) else None
-    wind_direction = wind_dirs[idx] if idx < len(wind_dirs) else None
+    wave_height = wave_heights[marine_idx] if marine_idx >= 0 and marine_idx < len(wave_heights) else None
+    wave_direction = wave_directions[marine_idx] if marine_idx >= 0 and marine_idx < len(wave_directions) else None
+    wave_period = wave_periods[marine_idx] if marine_idx >= 0 and marine_idx < len(wave_periods) else None
+    water_temp = water_temps[marine_idx] if marine_idx >= 0 and marine_idx < len(water_temps) else None
+    wind_speed = wind_speeds[weather_idx] if weather_idx >= 0 and weather_idx < len(wind_speeds) else None
+    wind_direction = wind_dirs[weather_idx] if weather_idx >= 0 and weather_idx < len(wind_dirs) else None
 
     tide_level = _tide_band(current_sea, sea_min, sea_max)
     tide_trend = _tide_trend(prev_sea, current_sea, next_sea)
@@ -192,7 +195,15 @@ def get_open_meteo_forecast(
         "provider": "open-meteo",
         "spot_name": spot_name,
         "session_date": date_str,
-        "target_time": times[idx] if idx < len(times) else f"{date_str}T{target_time.strftime('%H:%M')}",
+        "target_time": (
+            marine_times[marine_idx]
+            if marine_idx >= 0 and marine_idx < len(marine_times)
+            else (
+                weather_times[weather_idx]
+                if weather_idx >= 0 and weather_idx < len(weather_times)
+                else f"{date_str}T{target_time.strftime('%H:%M')}"
+            )
+        ),
         "wave_height_m": wave_height,
         "wave_direction_deg": wave_direction,
         "wave_direction_cardinal": _cardinal_direction(wave_direction),
