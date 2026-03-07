@@ -304,55 +304,57 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
       </div>
       {!isDateValid ? <p className="tiny error-text">Date is required.</p> : null}
       {!isTimeValid ? <p className="tiny error-text">Meet time is required.</p> : null}
-      <div className="forecast-card">
-        <div className="forecast-head">
-          <p className="tiny"><strong>Open-Meteo Marine forecast</strong></p>
-          <button type="button" className="ghost" disabled={!forecast} onClick={applyForecastToNote}>
-            Use in note
-          </button>
-        </div>
-        {forecastLoading ? <p className="tiny">Loading forecast...</p> : null}
-        {forecastError ? <p className="tiny error-text">{forecastError}</p> : null}
-        {forecast ? (
-          <div className="forecast-grid">
-            <p className="tiny">Wave: {forecast.wave_height_m !== null ? `${forecast.wave_height_m.toFixed(1)} m` : "n/a"}</p>
-            <p className="tiny">Wind: {forecast.wind_speed_kmh !== null ? `${Math.round(forecast.wind_speed_kmh)} km/h ${forecast.wind_direction_cardinal}` : "n/a"}</p>
-            <p className="tiny">Water: {forecast.water_temperature_c !== null ? `${forecast.water_temperature_c.toFixed(1)}°C` : "n/a"}</p>
-            <p className="tiny">Tide: {forecast.tide_level} ({forecast.tide_trend})</p>
+      <div className="forecast-row">
+        <div className="forecast-card">
+          <div className="forecast-head">
+            <p className="tiny"><strong>Open-Meteo Marine</strong></p>
+            <button type="button" className="ghost" disabled={!forecast} onClick={applyForecastToNote}>
+              Use in note
+            </button>
           </div>
-        ) : null}
-        {!forecastLoading && !forecastError && !forecast ? (
-          <p className="tiny">
-            {!selectedSpot
-              ? "Select a spot to load forecast."
-              : isPastTarget
-                ? "Historical mode: forecast updates are frozen for past time."
-                : "Pick date/time to load forecast."}
-          </p>
-        ) : null}
-        {forecast && isPastTarget ? (
-          <p className="tiny">Historical snapshot mode: no auto-refresh for past sessions.</p>
-        ) : null}
+          {forecastLoading ? <p className="tiny">Loading forecast...</p> : null}
+          {forecastError ? <p className="tiny error-text">{forecastError}</p> : null}
+          {forecast ? (
+            <div className="forecast-inline">
+              <span className="forecast-pill">🌊 {forecast.wave_height_m !== null ? `${forecast.wave_height_m.toFixed(1)} m` : "n/a"}</span>
+              <span className="forecast-pill">💨 {forecast.wind_speed_kmh !== null ? `${Math.round(forecast.wind_speed_kmh)} km/h ${forecast.wind_direction_cardinal}` : "n/a"}</span>
+              <span className="forecast-pill">🌡️ {forecast.water_temperature_c !== null ? `${forecast.water_temperature_c.toFixed(1)}°C` : "n/a"}</span>
+              <span className="forecast-pill">🌊⬍ {forecast.tide_level} ({forecast.tide_trend})</span>
+            </div>
+          ) : null}
+          {!forecastLoading && !forecastError && !forecast ? (
+            <p className="tiny">
+              {!selectedSpot
+                ? "Select a spot to load forecast."
+                : isPastTarget
+                  ? "Historical mode: forecast updates are frozen for past time."
+                  : "Pick date/time to load forecast."}
+            </p>
+          ) : null}
+          {forecast && isPastTarget ? (
+            <p className="tiny">Historical snapshot mode: no auto-refresh for past sessions.</p>
+          ) : null}
+        </div>
+        <label className="forecast-note-card">
+          Forecast Note
+          <span className="tiny">
+            Recommended: check{" "}
+            <a href="https://www.surfline.com/" target="_blank" rel="noreferrer">
+              Surfline
+            </a>{" "}
+            and{" "}
+            <a href="https://www.windy.com/" target="_blank" rel="noreferrer">
+              Windy
+            </a>
+            .
+          </span>
+          <textarea
+            value={forecastNote}
+            onChange={(event) => setForecastNote(event.target.value)}
+            placeholder="2-3ft, offshore till 9am"
+          />
+        </label>
       </div>
-      <label>
-        Forecast Note
-        <span className="tiny">
-          Recommended: check{" "}
-          <a href="https://www.surfline.com/" target="_blank" rel="noreferrer">
-            Surfline
-          </a>{" "}
-          and{" "}
-          <a href="https://www.windy.com/" target="_blank" rel="noreferrer">
-            Windy
-          </a>
-          .
-        </span>
-        <textarea
-          value={forecastNote}
-          onChange={(event) => setForecastNote(event.target.value)}
-          placeholder="2-3ft, offshore till 9am"
-        />
-      </label>
       <label>
         Logistics
         <textarea

@@ -74,7 +74,7 @@ export function SurfGroupPanel({
           title={crewOpen ? "Collapse" : "Expand"}
           onClick={() => setCrewOpen((value) => !value)}
         >
-          {crewOpen ? "▴" : "▾"}
+          {crewOpen ? "⌃" : "⌄"}
         </button>
       </div>
       {!crewOpen ? null : (

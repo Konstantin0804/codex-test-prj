@@ -131,7 +131,7 @@ export function FriendsPanel({ onOpenUser, hasUnread }: Props) {
           title={open ? "Collapse" : "Expand"}
           onClick={() => setOpen((value) => !value)}
         >
-          {open ? "▴" : "▾"}
+          {open ? "⌃" : "⌄"}
         </button>
       </div>
       {!open ? null : (

@@ -68,7 +68,7 @@ export function InboxPanel({
             title={expanded ? "Collapse" : "Expand"}
             onClick={() => setOpen((value) => !value)}
           >
-            {expanded ? "▴" : "▾"}
+            {expanded ? "⌃" : "⌄"}
           </button>
         ) : null}
       </div>
