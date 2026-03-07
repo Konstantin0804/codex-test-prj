@@ -45,7 +45,7 @@ export function AuthPanel() {
   return (
     <main className="layout auth-layout">
       <section className="card auth-card">
-        <p className="eyebrow">Pulseboard Access</p>
+        <p className="eyebrow">Surfrew planner</p>
         <h1>{mode === "login" ? "Sign In" : "Create Account"}</h1>
         <p>Use your account to coordinate surf sessions with your crew.</p>
         <form onSubmit={submit} className="auth-form">
