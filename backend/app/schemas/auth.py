@@ -35,6 +35,19 @@ class PasswordResetResponse(BaseModel):
     message: str
 
 
+class PasskeyBeginRequest(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=80)
+
+
+class PasskeyFinishRequest(BaseModel):
+    credential: dict
+    username: str | None = Field(default=None, min_length=3, max_length=80)
+
+
+class PasskeyOptionsResponse(BaseModel):
+    options: dict
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

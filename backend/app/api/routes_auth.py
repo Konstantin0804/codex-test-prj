@@ -8,6 +8,9 @@ from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
     LoginRequest,
+    PasskeyBeginRequest,
+    PasskeyFinishRequest,
+    PasskeyOptionsResponse,
     PasswordForgotRequest,
     PasswordForgotResponse,
     PasswordResetRequest,
@@ -18,6 +21,12 @@ from app.schemas.auth import (
     RegisterResponse,
     UsernameCheckResponse,
     UserRead,
+)
+from app.services.passkey_service import (
+    begin_passkey_authentication,
+    begin_passkey_registration,
+    finish_passkey_authentication,
+    finish_passkey_registration,
 )
 from app.services.auth_service import (
     authenticate_user,
@@ -127,6 +136,49 @@ def forgot_password(payload: PasswordForgotRequest, db: Session = Depends(get_db
 def reset_password(payload: PasswordResetRequest, db: Session = Depends(get_db_dep)) -> PasswordResetResponse:
     reset_password_with_token(db, token=payload.token, new_password=payload.new_password)
     return PasswordResetResponse(status="ok", message="Password updated. Please login with your new password.")
+
+
+@router.post("/passkeys/register/options", response_model=PasskeyOptionsResponse)
+def passkey_register_options(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> PasskeyOptionsResponse:
+    return PasskeyOptionsResponse(options=begin_passkey_registration(db, current_user))
+
+
+@router.post("/passkeys/register/verify")
+def passkey_register_verify(
+    payload: PasskeyFinishRequest,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    finish_passkey_registration(db, current_user, payload.credential)
+    return {"status": "ok"}
+
+
+@router.post("/passkeys/auth/options", response_model=PasskeyOptionsResponse)
+def passkey_auth_options(
+    payload: PasskeyBeginRequest,
+    db: Session = Depends(get_db_dep),
+) -> PasskeyOptionsResponse:
+    if not payload.username:
+        raise HTTPException(status_code=422, detail="Username is required")
+    return PasskeyOptionsResponse(options=begin_passkey_authentication(db, payload.username))
+
+
+@router.post("/passkeys/auth/verify", response_model=AuthResponse)
+def passkey_auth_verify(
+    payload: PasskeyFinishRequest,
+    response: Response,
+    db: Session = Depends(get_db_dep),
+) -> AuthResponse:
+    if not payload.username:
+        raise HTTPException(status_code=422, detail="Username is required")
+    user = finish_passkey_authentication(db, payload.username, payload.credential)
+    token = issue_token(user)
+    refresh = issue_refresh_token(db, user)
+    _set_refresh_cookie(response, refresh)
+    return AuthResponse(access_token=token, username=user.username)
 
 
 @router.post("/logout")

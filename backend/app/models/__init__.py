@@ -1,4 +1,5 @@
 from app.models.auth import RefreshSession
+from app.models.passkey import PasskeyChallenge, PasskeyCredential
 from app.models.surf import (
     GroupInvite,
     GroupMembership,
@@ -25,6 +26,8 @@ from app.models.user import User
 
 __all__ = [
     "RefreshSession",
+    "PasskeyCredential",
+    "PasskeyChallenge",
     "User",
     "Task",
     "TaskStatus",

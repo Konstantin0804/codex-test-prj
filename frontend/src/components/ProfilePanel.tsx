@@ -1,6 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../shared/api";
 import { SURF_SPOTS } from "../shared/surfSpots";
+import {
+  browserSupportsPasskeys,
+  prepareRegistrationOptions,
+  serializeRegistrationCredential,
+} from "../shared/passkey";
 
 type SurfLevel = "beginner" | "beginner_plus" | "intermediate" | "advanced" | "pro";
 
@@ -61,6 +66,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const [spotQuery, setSpotQuery] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarInputLabel, setAvatarInputLabel] = useState("");
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -186,6 +192,35 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
       setError(err?.response?.data?.detail ?? "Failed to save profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const registerPasskey = async () => {
+    setError(null);
+    setSuccess(null);
+    if (!browserSupportsPasskeys()) {
+      setError("Passkeys are not supported in this browser.");
+      return;
+    }
+    setPasskeyBusy(true);
+    try {
+      const optionsRes = await api.post<{ options: any }>("/auth/passkeys/register/options");
+      const publicKey = prepareRegistrationOptions(optionsRes.data.options);
+      const credential = (await navigator.credentials.create({
+        publicKey,
+      })) as PublicKeyCredential | null;
+      if (!credential) {
+        setError("Passkey registration was cancelled.");
+        return;
+      }
+      await api.post("/auth/passkeys/register/verify", {
+        credential: serializeRegistrationCredential(credential),
+      });
+      setSuccess("Face ID / Touch ID enabled on this device.");
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to register passkey");
+    } finally {
+      setPasskeyBusy(false);
     }
   };
 
@@ -381,6 +416,9 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
 
         {error ? <p className="error">{error}</p> : null}
         {success ? <p className="status">{success}</p> : null}
+        <button className="ghost" type="button" disabled={passkeyBusy} onClick={() => void registerPasskey()}>
+          {passkeyBusy ? "Setting up passkey..." : "Enable Face ID / Touch ID"}
+        </button>
         <button type="submit" disabled={saving || !canSubmit}>
           {saving ? "Saving..." : "Save profile"}
         </button>

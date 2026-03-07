@@ -1,7 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
-import { login, register } from "../features/auth/authSlice";
+import { applySession, login, register } from "../features/auth/authSlice";
 import { api } from "../shared/api";
+import {
+  browserSupportsPasskeys,
+  prepareAuthenticationOptions,
+  serializeAuthenticationCredential,
+} from "../shared/passkey";
 
 function normalizeTelegramHandleInput(value: string): string {
   const trimmed = value.replace(/\s+/g, "");
@@ -33,6 +38,7 @@ export function AuthPanel() {
   const [localStatus, setLocalStatus] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [openedTelegramStep, setOpenedTelegramStep] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   useEffect(() => {
     if (forgotCooldownSeconds <= 0) {
@@ -119,6 +125,42 @@ export function AuthPanel() {
           : !resetValid);
   const mustOpenTelegram = mode === "register" && Boolean(registerBotLink);
   const continueDisabled = mustOpenTelegram && !openedTelegramStep;
+
+  const loginWithPasskey = async () => {
+    setLocalError(null);
+    setLocalStatus(null);
+    if (!browserSupportsPasskeys()) {
+      setLocalError("Passkeys are not supported in this browser.");
+      return;
+    }
+    if (username.trim().length < 3) {
+      setLocalError("Enter username first.");
+      return;
+    }
+    setPasskeyLoading(true);
+    try {
+      const optionsRes = await api.post<{ options: any }>("/auth/passkeys/auth/options", {
+        username: username.trim().toLowerCase(),
+      });
+      const publicKey = prepareAuthenticationOptions(optionsRes.data.options);
+      const cred = (await navigator.credentials.get({
+        publicKey,
+      })) as PublicKeyCredential | null;
+      if (!cred) {
+        setLocalError("Passkey login was cancelled.");
+        return;
+      }
+      const verifyRes = await api.post("/auth/passkeys/auth/verify", {
+        username: username.trim().toLowerCase(),
+        credential: serializeAuthenticationCredential(cred),
+      });
+      dispatch(applySession(verifyRes.data));
+    } catch (err: any) {
+      setLocalError(err?.response?.data?.detail ?? "Passkey login failed");
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
 
   return (
     <main className="layout auth-layout">
@@ -274,24 +316,34 @@ export function AuthPanel() {
             </p>
           ) : null}
           {mode === "login" ? (
-            <div className="auth-login-actions">
-              <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
-                {loading ? "Please wait..." : "Sign in"}
-              </button>
+            <>
+              <div className="auth-login-actions">
+                <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
+                  {loading ? "Please wait..." : "Sign in"}
+                </button>
+                <button
+                  className="ghost auth-submit-btn"
+                  type="button"
+                  onClick={() => {
+                    setMode("forgot");
+                    setLocalError(null);
+                    setLocalStatus(null);
+                    setForgotLocked(false);
+                    setForgotCooldownSeconds(0);
+                  }}
+                >
+                  Forgot password?
+                </button>
+              </div>
               <button
                 className="ghost auth-submit-btn"
                 type="button"
-                onClick={() => {
-                  setMode("forgot");
-                  setLocalError(null);
-                  setLocalStatus(null);
-                  setForgotLocked(false);
-                  setForgotCooldownSeconds(0);
-                }}
+                disabled={passkeyLoading}
+                onClick={() => void loginWithPasskey()}
               >
-                Forgot password?
+                {passkeyLoading ? "Checking passkey..." : "Face ID / Touch ID"}
               </button>
-            </div>
+            </>
           ) : mode === "register" && registerBotLink ? null : (
             <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
               {loading
