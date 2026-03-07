@@ -529,14 +529,18 @@ body {
   border-radius: 12px;
   padding: 0.55rem 0.65rem;
   background: #fff;
-  min-height: 74px;
+  min-height: 100%;
+  height: 100%;
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
 }
 
 .forecast-row {
   display: grid;
   grid-template-columns: minmax(0, 0.64fr) minmax(0, 1.36fr);
   gap: 0.6rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .forecast-head {
@@ -544,6 +548,13 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.4rem;
+}
+
+.forecast-note-btn {
+  white-space: nowrap;
+  padding: 0.34rem 0.52rem;
+  font-size: 0.82rem;
+  border-radius: 10px;
 }
 
 .forecast-inline {
@@ -573,10 +584,26 @@ body {
   padding: 0.55rem 0.65rem;
   display: grid;
   gap: 0.35rem;
+  height: 100%;
+  align-content: start;
+}
+
+.forecast-note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.forecast-note-rec {
+  font-size: 0.73rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .forecast-note-card textarea {
-  min-height: 88px;
+  min-height: 100px;
+  height: 100%;
 }
 
 .invite-row {
@@ -1194,6 +1221,16 @@ button.ghost {
 
   .forecast-inline {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .forecast-note-head {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .forecast-note-rec {
+    white-space: normal;
   }
 
   .forecast-note-card textarea {

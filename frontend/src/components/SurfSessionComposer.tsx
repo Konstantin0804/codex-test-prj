@@ -313,8 +313,8 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
         <div className="forecast-card">
           <div className="forecast-head">
             <p className="tiny"><strong>Open-Meteo Marine</strong></p>
-            <button type="button" className="ghost" disabled={!forecast} onClick={applyForecastToNote}>
-              Use in note
+            <button type="button" className="ghost forecast-note-btn" disabled={!forecast} onClick={applyForecastToNote}>
+              To note
             </button>
           </div>
           {forecastLoading ? <p className="tiny">Loading forecast...</p> : null}
@@ -341,17 +341,19 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
           ) : null}
         </div>
         <label className="forecast-note-card">
-          Forecast Note
-          <span className="tiny">
-            Recommended: check{" "}
-            <a href="https://www.surfline.com/" target="_blank" rel="noreferrer">
-              Surfline
-            </a>{" "}
-            and{" "}
-            <a href="https://www.windy.com/" target="_blank" rel="noreferrer">
-              Windy
-            </a>
-            .
+          <span className="forecast-note-head">
+            <span>Forecast Note</span>
+            <span className="tiny forecast-note-rec">
+              Recommended: check also{" "}
+              <a href="https://www.surfline.com/" target="_blank" rel="noreferrer">
+                Surfline
+              </a>{" "}
+              and{" "}
+              <a href="https://www.windy.com/" target="_blank" rel="noreferrer">
+                Windy
+              </a>
+              .
+            </span>
           </span>
           <textarea
             value={forecastNote}
