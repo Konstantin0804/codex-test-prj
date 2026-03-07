@@ -49,6 +49,8 @@ class ProfileRead(BaseModel):
     city: str | None = None
     surfboard: str | None = None
     surf_level: SurfLevel | None = None
+    has_car: bool | None = None
+    car_seats: int | None = Field(default=None, ge=0, le=6)
     phone_number: str | None = None
     favorite_spots: list[str] = Field(default_factory=list)
     avatar_url: str | None = None
@@ -59,5 +61,7 @@ class ProfileUpdate(BaseModel):
     city: str | None = Field(default=None, min_length=2, max_length=120)
     surfboard: str | None = Field(default=None, min_length=2, max_length=140)
     surf_level: SurfLevel | None = None
+    has_car: bool | None = None
+    car_seats: int | None = Field(default=None, ge=0, le=6)
     phone_number: str | None = Field(default=None, min_length=9, max_length=32)
     favorite_spots: list[str] | None = Field(default=None, max_length=3)

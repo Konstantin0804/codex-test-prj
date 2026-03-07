@@ -22,6 +22,8 @@ class User(Base):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     surfboard: Mapped[str | None] = mapped_column(String(140), nullable=True)
     surf_level: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    has_car: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    car_seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(24), nullable=True)
     favorite_spots_csv: Mapped[str | None] = mapped_column(String(512), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)

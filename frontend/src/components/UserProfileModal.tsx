@@ -8,6 +8,8 @@ interface Profile {
   city: string | null;
   surfboard: string | null;
   surf_level: string | null;
+  has_car: boolean | null;
+  car_seats: number | null;
   phone_number: string | null;
   favorite_spots: string[];
   avatar_url: string | null;
@@ -59,6 +61,8 @@ export function UserProfileModal({ username, onClose }: Props) {
               <p className="tiny">City: {profile.city ?? "-"}</p>
               <p className="tiny">Surfboard: {profile.surfboard ?? "-"}</p>
               <p className="tiny">Level: {profile.surf_level ?? "-"}</p>
+              <p className="tiny">Car: {profile.has_car === null ? "-" : profile.has_car ? "Yes" : "No"}</p>
+              <p className="tiny">Passenger seats: {profile.car_seats ?? "-"}</p>
               <p className="tiny">Phone: {profile.phone_number ?? "-"}</p>
               <p className="tiny">
                 Favorite spots: {profile.favorite_spots.length ? profile.favorite_spots.join(", ") : "-"}

@@ -11,6 +11,8 @@ interface Profile {
   city: string | null;
   surfboard: string | null;
   surf_level: SurfLevel | null;
+  has_car: boolean | null;
+  car_seats: number | null;
   phone_number: string | null;
   favorite_spots: string[];
   avatar_url: string | null;
@@ -52,6 +54,8 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const [city, setCity] = useState("");
   const [surfboard, setSurfboard] = useState("");
   const [surfLevel, setSurfLevel] = useState<SurfLevel | "">("");
+  const [hasCar, setHasCar] = useState<"" | "yes" | "no">("");
+  const [carSeats, setCarSeats] = useState<number>(0);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [favoriteSpots, setFavoriteSpots] = useState<string[]>([]);
   const [spotQuery, setSpotQuery] = useState("");
@@ -69,6 +73,8 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         setCity(profile.city ?? "");
         setSurfboard(profile.surfboard ?? "");
         setSurfLevel(profile.surf_level ?? "");
+        setHasCar(profile.has_car === null ? "" : profile.has_car ? "yes" : "no");
+        setCarSeats(profile.car_seats ?? 0);
         setPhoneNumber(profile.phone_number ?? "");
         setFavoriteSpots(profile.favorite_spots ?? []);
         setAvatarUrl(profile.avatar_url ?? null);
@@ -91,7 +97,8 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
     phoneNumber.trim().length === 0 ||
     (phoneNumber.trim().startsWith("+") && phoneDigits.length >= 6 && phoneDigits.length <= 15);
   const validFavoriteSpots = favoriteSpots.length <= 3;
-  const canSubmit = validAge && validCity && validBoard && validPhone && validFavoriteSpots;
+  const validCarSeats = carSeats >= 0 && carSeats <= 6;
+  const canSubmit = validAge && validCity && validBoard && validPhone && validFavoriteSpots && validCarSeats;
 
   const normalizedPhonePreview = useMemo(() => sanitizeInternationalPhoneInput(phoneNumber), [phoneNumber]);
   const filteredSpots = useMemo(() => {
@@ -163,6 +170,10 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
       }
       if (surfLevel) {
         payload.surf_level = surfLevel;
+      }
+      if (hasCar !== "") {
+        payload.has_car = hasCar === "yes";
+        payload.car_seats = hasCar === "yes" ? carSeats : 0;
       }
       if (phoneNumber.trim().length > 0) {
         payload.phone_number = normalizedPhonePreview;
@@ -256,24 +267,58 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
             <input value={city} onChange={(event) => setCity(event.target.value)} />
           </label>
         </div>
-        <label>
-          Surf Level
-          <select
-            value={surfLevel}
-            onChange={(event) => setSurfLevel(event.target.value as SurfLevel | "")}
-          >
-            <option value="">Not set</option>
-            {Object.entries(LEVEL_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="row-3 about-surf-row">
+          <label>
+            Surf Level
+            <select
+              value={surfLevel}
+              onChange={(event) => setSurfLevel(event.target.value as SurfLevel | "")}
+            >
+              <option value="">Not set</option>
+              {Object.entries(LEVEL_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Car available
+            <select
+              value={hasCar}
+              onChange={(event) => {
+                const next = event.target.value as "" | "yes" | "no";
+                setHasCar(next);
+                if (next !== "yes") {
+                  setCarSeats(0);
+                }
+              }}
+            >
+              <option value="">Not set</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </label>
+          <label>
+            Passenger seats (0-6)
+            <select
+              value={carSeats}
+              onChange={(event) => setCarSeats(Number(event.target.value))}
+              disabled={hasCar !== "yes"}
+            >
+              {Array.from({ length: 7 }, (_, idx) => (
+                <option key={idx} value={idx}>
+                  {idx}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {!validAge && age.length > 0 ? <p className="tiny error-text">Age: 8 to 90.</p> : null}
         {!validCity && city.trim().length > 0 ? (
           <p className="tiny error-text">City: minimum 2 characters.</p>
         ) : null}
+        {!validCarSeats ? <p className="tiny error-text">Passenger seats: from 0 to 6.</p> : null}
 
         <div className="row-2">
           <label>

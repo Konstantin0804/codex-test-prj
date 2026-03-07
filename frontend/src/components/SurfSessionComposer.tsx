@@ -243,11 +243,14 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
         <div className="session-spot-picker">
           <label>
             Spot *
-            <input
-              value={spotName}
-              onChange={(event) => setSpotName(event.target.value)}
-              placeholder="Start typing to search spots..."
-            />
+            <div className="spot-input-wrap">
+              <input
+                value={spotName}
+                onChange={(event) => setSpotName(event.target.value)}
+                placeholder="Start typing to search spots..."
+              />
+              {selectedSpot ? <span className="spot-check" aria-label="Spot selected">✓</span> : null}
+            </div>
           </label>
           {selectedSpot ? (
             <p className="tiny">

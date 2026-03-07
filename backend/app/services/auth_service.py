@@ -232,6 +232,8 @@ def update_profile(
     city: str | None,
     surfboard: str | None,
     surf_level: str | None,
+    has_car: bool | None,
+    car_seats: int | None,
     phone_number: str | None,
     favorite_spots: list[str] | None,
 ) -> User:
@@ -243,6 +245,19 @@ def update_profile(
         user.surfboard = surfboard.strip() or None
     if surf_level is not None:
         user.surf_level = surf_level
+    if has_car is not None:
+        user.has_car = has_car
+        if has_car is False:
+            user.car_seats = 0
+    if car_seats is not None:
+        if car_seats < 0 or car_seats > 6:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Car seats must be between 0 and 6",
+            )
+        user.car_seats = car_seats
+    if user.has_car is False and (user.car_seats or 0) > 0:
+        user.car_seats = 0
     if phone_number is not None:
         cleaned_phone = phone_number.strip()
         user.phone_number = _normalize_phone_international(cleaned_phone) if cleaned_phone else None
