@@ -154,6 +154,12 @@ body {
   gap: 1rem;
 }
 
+.sidebar-stack {
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+
 .surf-sidebar {
   padding: 1rem;
   display: grid;
@@ -684,6 +690,18 @@ button.ghost {
 .profile-form {
   display: grid;
   gap: 0.55rem;
+}
+
+.profile-readonly {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
 }
 
 .profile-avatar-preview {

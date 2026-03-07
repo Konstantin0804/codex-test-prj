@@ -2,12 +2,15 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
 from app.core.surf_spots import SURF_SPOT_NAMES
 from app.models.surf import (
+    FriendRequest,
+    FriendRequestStatus,
+    Friendship,
     GroupInvite,
     GroupMembership,
     GroupRole,
@@ -140,17 +143,137 @@ def list_groups(db: Session, user: User) -> list[tuple[SurfGroup, GroupMembershi
 
 
 def list_friends(db: Session, user: User) -> list[User]:
-    own_memberships = aliased(GroupMembership)
-    friend_memberships = aliased(GroupMembership)
+    low_user = aliased(User)
+    high_user = aliased(User)
     stmt = (
-        select(User)
-        .join(friend_memberships, friend_memberships.user_id == User.id)
-        .join(own_memberships, own_memberships.group_id == friend_memberships.group_id)
-        .where(own_memberships.user_id == user.id, User.id != user.id)
-        .distinct()
-        .order_by(User.username.asc())
+        select(low_user, high_user)
+        .select_from(Friendship)
+        .join(low_user, Friendship.user_low_id == low_user.id)
+        .join(high_user, Friendship.user_high_id == high_user.id)
+        .where(or_(Friendship.user_low_id == user.id, Friendship.user_high_id == user.id))
+    )
+    results: list[User] = []
+    for left, right in db.execute(stmt).all():
+        results.append(right if left.id == user.id else left)
+    return sorted(results, key=lambda item: item.username)
+
+
+def list_registered_users(db: Session, current_user: User) -> list[User]:
+    stmt = select(User).where(User.id != current_user.id).order_by(User.username.asc())
+    return list(db.scalars(stmt).all())
+
+
+def list_incoming_friend_requests(db: Session, current_user: User) -> list[FriendRequest]:
+    stmt = (
+        select(FriendRequest)
+        .where(
+            FriendRequest.to_user_id == current_user.id,
+            FriendRequest.status == FriendRequestStatus.pending,
+        )
+        .order_by(FriendRequest.created_at.desc())
     )
     return list(db.scalars(stmt).all())
+
+
+def _friend_pair(user_a: int, user_b: int) -> tuple[int, int]:
+    return (min(user_a, user_b), max(user_a, user_b))
+
+
+def create_friend_request(db: Session, current_user: User, to_username: str) -> FriendRequest:
+    target = db.scalar(select(User).where(User.username == to_username.strip().lower()))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot add yourself")
+
+    low, high = _friend_pair(current_user.id, target.id)
+    existing_friendship = db.scalar(
+        select(Friendship).where(Friendship.user_low_id == low, Friendship.user_high_id == high)
+    )
+    if existing_friendship:
+        raise HTTPException(status_code=409, detail="Already friends")
+
+    existing_direct = db.scalar(
+        select(FriendRequest).where(
+            FriendRequest.from_user_id == current_user.id,
+            FriendRequest.to_user_id == target.id,
+            FriendRequest.status == FriendRequestStatus.pending,
+        )
+    )
+    if existing_direct:
+        return existing_direct
+
+    reverse = db.scalar(
+        select(FriendRequest).where(
+            FriendRequest.from_user_id == target.id,
+            FriendRequest.to_user_id == current_user.id,
+            FriendRequest.status == FriendRequestStatus.pending,
+        )
+    )
+    if reverse:
+        reverse.status = FriendRequestStatus.accepted
+        reverse.acted_at = _now()
+        db.add(reverse)
+        db.add(Friendship(user_low_id=low, user_high_id=high))
+        db.commit()
+        db.refresh(reverse)
+        return reverse
+
+    request = FriendRequest(from_user_id=current_user.id, to_user_id=target.id, status=FriendRequestStatus.pending)
+    db.add(request)
+    create_inbox_item(
+        db,
+        target.id,
+        "friend_request",
+        "New friend request",
+        f"@{current_user.username} sent you a friend request.",
+    )
+    db.commit()
+    db.refresh(request)
+    return request
+
+
+def accept_friend_request(db: Session, request_id: int, current_user: User) -> FriendRequest:
+    request = db.get(FriendRequest, request_id)
+    if not request or request.to_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Friend request not found")
+    if request.status != FriendRequestStatus.pending:
+        raise HTTPException(status_code=400, detail="Friend request is not pending")
+
+    low, high = _friend_pair(request.from_user_id, request.to_user_id)
+    exists = db.scalar(
+        select(Friendship).where(Friendship.user_low_id == low, Friendship.user_high_id == high)
+    )
+    if not exists:
+        db.add(Friendship(user_low_id=low, user_high_id=high))
+
+    request.status = FriendRequestStatus.accepted
+    request.acted_at = _now()
+    db.add(request)
+    create_inbox_item(
+        db,
+        request.from_user_id,
+        "friend_request_accepted",
+        "Friend request accepted",
+        f"@{current_user.username} accepted your friend request.",
+    )
+    db.commit()
+    db.refresh(request)
+    return request
+
+
+def get_group_detail(db: Session, group_id: int, current_user: User) -> tuple[SurfGroup, list[tuple[User, GroupMembership]]]:
+    require_membership(db, group_id, current_user)
+    group = db.get(SurfGroup, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    stmt = (
+        select(User, GroupMembership)
+        .join(GroupMembership, GroupMembership.user_id == User.id)
+        .where(GroupMembership.group_id == group_id)
+        .order_by(User.username.asc())
+    )
+    return group, list(db.execute(stmt).all())
 
 
 def create_invite(db: Session, group_id: int, user: User) -> GroupInvite:

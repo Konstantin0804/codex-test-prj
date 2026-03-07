@@ -12,6 +12,7 @@ interface Props {
   onCreateGroup: (name: string, description: string) => Promise<void>;
   onJoinByCode: (code: string) => Promise<void>;
   onCreateInvite: (groupId: number) => Promise<void>;
+  onOpenGroupDetail: (groupId: number) => void;
 }
 
 export function SurfGroupPanel({
@@ -24,7 +25,8 @@ export function SurfGroupPanel({
   onSelectGroup,
   onCreateGroup,
   onJoinByCode,
-  onCreateInvite
+  onCreateInvite,
+  onOpenGroupDetail
 }: Props) {
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
@@ -64,7 +66,7 @@ export function SurfGroupPanel({
   return (
     <aside className="card surf-sidebar">
       <div className="crew-header">
-        <h2>Your Crew</h2>
+        <h2>Your Crews</h2>
         <button className="ghost crew-toggle" type="button" onClick={() => setCrewOpen((value) => !value)}>
           {crewOpen ? "Collapse" : "Expand"}
         </button>
@@ -143,8 +145,12 @@ export function SurfGroupPanel({
             {groups.map((group) => (
               <button
                 key={group.id}
+                type="button"
                 className={`group-item ${selectedGroupId === group.id ? "active" : ""}`}
-                onClick={() => onSelectGroup(group.id)}
+                onClick={() => {
+                  onSelectGroup(group.id);
+                  onOpenGroupDetail(group.id);
+                }}
               >
                 <strong>{group.name}</strong>
                 <small>{group.role}</small>
@@ -156,6 +162,7 @@ export function SurfGroupPanel({
             <div className="invite-box">
               <button
                 disabled={creatingInvite}
+                type="button"
                 onClick={() => onCreateInvite(selected.id)}
                 className="ghost"
               >

@@ -12,6 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.core.config import get_settings
 from app.db.base import Base
 from app.models.surf import (  # noqa: F401
+    FriendRequest,
+    Friendship,
     GroupInvite,
     GroupMembership,
     InboxItem,

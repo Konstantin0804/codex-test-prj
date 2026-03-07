@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db_dep
 from app.models.user import User
 from app.schemas.surf import (
+    FriendRequestCreate,
+    FriendRequestRead,
     FriendRead,
+    GroupDetailRead,
+    GroupMemberRead,
     GroupCreate,
     GroupRead,
     InboxItemRead,
@@ -20,15 +24,21 @@ from app.schemas.surf import (
     SessionRead,
     SessionReportCreate,
     SessionReportRead,
+    UserDirectoryRead,
 )
 from app.services.surf_service import (
+    accept_friend_request,
     accept_session_invite,
+    create_friend_request,
     create_group,
     create_invite,
     create_report,
     create_session_invite,
     create_session,
+    get_group_detail,
     join_by_code,
+    list_incoming_friend_requests,
+    list_registered_users,
     list_friends,
     list_inbox_items,
     list_groups,
@@ -88,6 +98,88 @@ def get_friends(
         FriendRead(id=friend.id, username=friend.username, telegram_username=friend.telegram_username)
         for friend in friends
     ]
+
+
+@router.get("/users", response_model=list[UserDirectoryRead])
+def get_users(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[UserDirectoryRead]:
+    users = list_registered_users(db, current_user)
+    return [UserDirectoryRead(id=item.id, username=item.username, avatar_url=item.avatar_url) for item in users]
+
+
+@router.post("/friends/requests", response_model=FriendRequestRead)
+def post_friend_request(
+    payload: FriendRequestCreate,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> FriendRequestRead:
+    request = create_friend_request(db, current_user, payload.to_username)
+    from_user = db.get(User, request.from_user_id)
+    to_user = db.get(User, request.to_user_id)
+    return FriendRequestRead(
+        id=request.id,
+        from_username=from_user.username if from_user else "",
+        to_username=to_user.username if to_user else "",
+        status=request.status,
+        created_at=request.created_at,
+    )
+
+
+@router.get("/friends/requests/incoming", response_model=list[FriendRequestRead])
+def get_incoming_friend_requests(
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[FriendRequestRead]:
+    requests = list_incoming_friend_requests(db, current_user)
+    rows: list[FriendRequestRead] = []
+    for request in requests:
+        from_user = db.get(User, request.from_user_id)
+        to_user = db.get(User, request.to_user_id)
+        rows.append(
+            FriendRequestRead(
+                id=request.id,
+                from_username=from_user.username if from_user else "",
+                to_username=to_user.username if to_user else "",
+                status=request.status,
+                created_at=request.created_at,
+            )
+        )
+    return rows
+
+
+@router.post("/friends/requests/{request_id}/accept", response_model=FriendRequestRead)
+def post_accept_friend_request(
+    request_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> FriendRequestRead:
+    request = accept_friend_request(db, request_id, current_user)
+    from_user = db.get(User, request.from_user_id)
+    to_user = db.get(User, request.to_user_id)
+    return FriendRequestRead(
+        id=request.id,
+        from_username=from_user.username if from_user else "",
+        to_username=to_user.username if to_user else "",
+        status=request.status,
+        created_at=request.created_at,
+    )
+
+
+@router.get("/groups/{group_id}/detail", response_model=GroupDetailRead)
+def get_group_detail_route(
+    group_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> GroupDetailRead:
+    group, members = get_group_detail(db, group_id, current_user)
+    return GroupDetailRead(
+        id=group.id,
+        name=group.name,
+        description=group.description,
+        members=[GroupMemberRead(username=user.username, role=membership.role) for user, membership in members],
+    )
 
 
 @router.post("/groups/{group_id}/invites", response_model=InviteRead)

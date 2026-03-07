@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { AuthPanel } from "../components/AuthPanel";
 import { AppHeader } from "../components/AppHeader";
+import { CrewDetailModal } from "../components/CrewDetailModal";
+import { FriendsPanel } from "../components/FriendsPanel";
 import { InboxPanel } from "../components/InboxPanel";
 import { ProfilePanel } from "../components/ProfilePanel";
 import { SurfCalendar } from "../components/SurfCalendar";
 import { SurfGroupPanel } from "../components/SurfGroupPanel";
 import { SurfSessionComposer } from "../components/SurfSessionComposer";
+import { UserProfileModal } from "../components/UserProfileModal";
 import { logout } from "../features/auth/authSlice";
 import { api } from "../shared/api";
 import {
@@ -36,6 +39,8 @@ export function DashboardPage() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [aboutOpen, setAboutOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileModalUsername, setProfileModalUsername] = useState<string | null>(null);
+  const [crewModalGroupId, setCrewModalGroupId] = useState<number | null>(null);
   const {
     groups,
     friends,
@@ -228,21 +233,35 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null}
-      <section className="surf-layout">
-        <SurfGroupPanel
-          groups={groups}
-          selectedGroupId={selectedGroupId}
-          invitesByGroup={invitesByGroup}
-          creatingGroup={creatingGroup}
-          joiningByCode={joiningByCode}
-          creatingInvite={creatingInvite}
-          onSelectGroup={(id) => dispatch(selectGroup(id))}
-          onCreateGroup={handleCreateGroup}
-          onJoinByCode={handleJoinByCode}
-          onCreateInvite={async (groupId) => {
-            await dispatch(createInvite(groupId));
-          }}
+      {profileModalUsername ? (
+        <UserProfileModal username={profileModalUsername} onClose={() => setProfileModalUsername(null)} />
+      ) : null}
+      {crewModalGroupId ? (
+        <CrewDetailModal
+          groupId={crewModalGroupId}
+          onClose={() => setCrewModalGroupId(null)}
+          onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
         />
+      ) : null}
+      <section className="surf-layout">
+        <div className="sidebar-stack">
+          <SurfGroupPanel
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            invitesByGroup={invitesByGroup}
+            creatingGroup={creatingGroup}
+            joiningByCode={joiningByCode}
+            creatingInvite={creatingInvite}
+            onSelectGroup={(id) => dispatch(selectGroup(id))}
+            onCreateGroup={handleCreateGroup}
+            onJoinByCode={handleJoinByCode}
+            onCreateInvite={async (groupId) => {
+              await dispatch(createInvite(groupId));
+            }}
+            onOpenGroupDetail={(groupId) => setCrewModalGroupId(groupId)}
+          />
+          <FriendsPanel onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)} />
+        </div>
 
         <section className="surf-main">
           {loadingGroups ? <p className="status">Loading groups...</p> : null}

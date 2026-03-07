@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -74,6 +74,28 @@ def get_profile(current_user: User = Depends(get_current_user)) -> ProfileRead:
         phone_number=current_user.phone_number,
         favorite_spots=parse_favorite_spots(current_user.favorite_spots_csv),
         avatar_url=current_user.avatar_url,
+    )
+
+
+@router.get("/users/{username}/profile", response_model=ProfileRead)
+def get_profile_by_username(
+    username: str,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> ProfileRead:
+    user = db.scalar(select(User).where(User.username == username.strip().lower()))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return ProfileRead(
+        username=user.username,
+        telegram_username=user.telegram_username,
+        age=user.age,
+        city=user.city,
+        surfboard=user.surfboard,
+        surf_level=user.surf_level,
+        phone_number=user.phone_number,
+        favorite_spots=parse_favorite_spots(user.favorite_spots_csv),
+        avatar_url=user.avatar_url,
     )
 
 

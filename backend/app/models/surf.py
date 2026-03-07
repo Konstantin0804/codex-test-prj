@@ -48,6 +48,12 @@ class SessionInviteStatus(str, enum.Enum):
     declined = "declined"
 
 
+class FriendRequestStatus(str, enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    declined = "declined"
+
+
 class SurfGroup(Base):
     __tablename__ = "surf_groups"
 
@@ -165,4 +171,28 @@ class InboxItem(Base):
         ForeignKey("session_invites.id"), nullable=True, index=True
     )
     is_read: Mapped[bool] = mapped_column(default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class FriendRequest(Base):
+    __tablename__ = "friend_requests"
+    __table_args__ = (UniqueConstraint("from_user_id", "to_user_id", name="uq_friend_request_pair"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    status: Mapped[FriendRequestStatus] = mapped_column(
+        Enum(FriendRequestStatus), default=FriendRequestStatus.pending, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    acted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Friendship(Base):
+    __tablename__ = "friendships"
+    __table_args__ = (UniqueConstraint("user_low_id", "user_high_id", name="uq_friendship_pair"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_low_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    user_high_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

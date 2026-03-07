@@ -1,0 +1,153 @@
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../shared/api";
+
+interface UserDirectoryItem {
+  id: number;
+  username: string;
+  avatar_url: string | null;
+}
+
+interface FriendItem {
+  id: number;
+  username: string;
+  telegram_username: string | null;
+}
+
+interface FriendRequestItem {
+  id: number;
+  from_username: string;
+  to_username: string;
+  status: string;
+  created_at: string;
+}
+
+interface Props {
+  onOpenUser: (username: string) => void;
+}
+
+export function FriendsPanel({ onOpenUser }: Props) {
+  const [open, setOpen] = useState(false);
+  const [users, setUsers] = useState<UserDirectoryItem[]>([]);
+  const [friends, setFriends] = useState<FriendItem[]>([]);
+  const [incoming, setIncoming] = useState<FriendRequestItem[]>([]);
+  const [query, setQuery] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = async () => {
+    const [usersRes, friendsRes, incomingRes] = await Promise.all([
+      api.get<UserDirectoryItem[]>("/surf/users"),
+      api.get<FriendItem[]>("/surf/friends"),
+      api.get<FriendRequestItem[]>("/surf/friends/requests/incoming")
+    ]);
+    setUsers(usersRes.data);
+    setFriends(friendsRes.data);
+    setIncoming(incomingRes.data);
+  };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    void load();
+  }, [open]);
+
+  const friendUsernames = useMemo(() => new Set(friends.map((item) => item.username)), [friends]);
+  const filteredUsers = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return users.filter((item) => {
+      if (friendUsernames.has(item.username)) {
+        return false;
+      }
+      if (!normalized) {
+        return true;
+      }
+      return item.username.toLowerCase().includes(normalized);
+    });
+  }, [users, query, friendUsernames]);
+
+  const sendRequest = async (username: string) => {
+    try {
+      await api.post("/surf/friends/requests", { to_username: username });
+      setMessage(`Friend request sent to @${username}`);
+      await load();
+    } catch (err: any) {
+      setMessage(err?.response?.data?.detail ?? "Failed to send friend request");
+    }
+  };
+
+  const acceptRequest = async (id: number) => {
+    await api.post(`/surf/friends/requests/${id}/accept`);
+    await load();
+  };
+
+  return (
+    <aside className="card surf-sidebar">
+      <div className="crew-header">
+        <h2>Friends</h2>
+        <button className="ghost crew-toggle" type="button" onClick={() => setOpen((value) => !value)}>
+          {open ? "Collapse" : "Expand"}
+        </button>
+      </div>
+      {!open ? null : (
+        <>
+          <div className="stack-form">
+            <label>
+              Search users
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="@username"
+              />
+            </label>
+          </div>
+          {message ? <p className="tiny">{message}</p> : null}
+          <div className="group-list">
+            {filteredUsers.slice(0, 12).map((user) => (
+              <button
+                key={user.id}
+                className="group-item"
+                type="button"
+                onClick={() => void sendRequest(user.username)}
+              >
+                <strong>@{user.username}</strong>
+                <small>Add friend</small>
+              </button>
+            ))}
+          </div>
+          <div className="invite-box">
+            <p className="tiny">Incoming requests</p>
+            <div className="chip-row">
+              {incoming.map((request) => (
+                <button
+                  key={request.id}
+                  type="button"
+                  className="ghost"
+                  onClick={() => void acceptRequest(request.id)}
+                >
+                  Accept @{request.from_username}
+                </button>
+              ))}
+              {incoming.length === 0 ? <p className="tiny">No incoming requests.</p> : null}
+            </div>
+          </div>
+          <div className="invite-box">
+            <p className="tiny">Your friends</p>
+            <div className="chip-row">
+              {friends.map((friend) => (
+                <button
+                  key={friend.id}
+                  type="button"
+                  className="ghost"
+                  onClick={() => onOpenUser(friend.username)}
+                >
+                  @{friend.username}
+                </button>
+              ))}
+              {friends.length === 0 ? <p className="tiny">No friends yet.</p> : null}
+            </div>
+          </div>
+        </>
+      )}
+    </aside>
+  );
+}

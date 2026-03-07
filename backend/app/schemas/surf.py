@@ -2,7 +2,14 @@ from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.surf import GroupRole, InviteStatus, RSVPStatus, SessionInviteStatus, SessionLevel
+from app.models.surf import (
+    FriendRequestStatus,
+    GroupRole,
+    InviteStatus,
+    RSVPStatus,
+    SessionInviteStatus,
+    SessionLevel,
+)
 
 
 class GroupCreate(BaseModel):
@@ -24,6 +31,36 @@ class FriendRead(BaseModel):
     id: int
     username: str
     telegram_username: str | None = None
+
+
+class UserDirectoryRead(BaseModel):
+    id: int
+    username: str
+    avatar_url: str | None = None
+
+
+class FriendRequestCreate(BaseModel):
+    to_username: str = Field(min_length=3, max_length=80)
+
+
+class FriendRequestRead(BaseModel):
+    id: int
+    from_username: str
+    to_username: str
+    status: FriendRequestStatus
+    created_at: datetime
+
+
+class GroupMemberRead(BaseModel):
+    username: str
+    role: GroupRole
+
+
+class GroupDetailRead(BaseModel):
+    id: int
+    name: str
+    description: str
+    members: list[GroupMemberRead]
 
 
 class InviteRead(BaseModel):
