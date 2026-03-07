@@ -67,8 +67,14 @@ export function SurfGroupPanel({
     <aside className="card surf-sidebar">
       <div className="crew-header">
         <h2>Your Crews</h2>
-        <button className="ghost crew-toggle" type="button" onClick={() => setCrewOpen((value) => !value)}>
-          {crewOpen ? "Collapse" : "Expand"}
+        <button
+          className="ghost crew-toggle icon-toggle"
+          type="button"
+          aria-label={crewOpen ? "Collapse crews" : "Expand crews"}
+          title={crewOpen ? "Collapse" : "Expand"}
+          onClick={() => setCrewOpen((value) => !value)}
+        >
+          {crewOpen ? "▴" : "▾"}
         </button>
       </div>
       {!crewOpen ? null : (

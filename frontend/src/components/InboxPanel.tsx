@@ -62,8 +62,13 @@ export function InboxPanel({
       <div className="inbox-head">
         <h2>{detailed ? "Inbox Details" : "Inbox"}</h2>
         {!detailed ? (
-          <button className="ghost" onClick={() => setOpen((value) => !value)}>
-            {expanded ? "Collapse" : "Expand"}
+          <button
+            className="ghost icon-toggle"
+            aria-label={expanded ? "Collapse inbox" : "Expand inbox"}
+            title={expanded ? "Collapse" : "Expand"}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {expanded ? "▴" : "▾"}
           </button>
         ) : null}
       </div>

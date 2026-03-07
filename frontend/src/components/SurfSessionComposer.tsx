@@ -39,6 +39,46 @@ interface SpotForecast {
   summary: string;
 }
 
+const FORECAST_SNAPSHOT_PREFIX = "surf_forecast_snapshot_v1:";
+const FORECAST_CACHE_TTL_MS = 20 * 60 * 1000;
+
+function forecastKey(spotName: string, sessionDate: string, meetingTime: string): string {
+  return `${FORECAST_SNAPSHOT_PREFIX}${spotName}|${sessionDate}|${meetingTime || "06:30"}`;
+}
+
+function readForecastSnapshot(key: string): SpotForecast | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as { fetched_at: number; payload: SpotForecast };
+    if (!parsed?.payload || typeof parsed?.fetched_at !== "number") {
+      return null;
+    }
+    if (Date.now() - parsed.fetched_at > FORECAST_CACHE_TTL_MS) {
+      return null;
+    }
+    return parsed.payload;
+  } catch {
+    return null;
+  }
+}
+
+function writeForecastSnapshot(key: string, payload: SpotForecast): void {
+  try {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        fetched_at: Date.now(),
+        payload,
+      })
+    );
+  } catch {
+    // ignore storage quota or blocked storage
+  }
+}
+
 export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmit }: Props) {
   const [spotName, setSpotName] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
@@ -81,12 +121,47 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
     });
   }, [spotName]);
 
+  const targetDateTime = useMemo(() => {
+    if (!sessionDate) {
+      return null;
+    }
+    const timeValue = meetingTime || "06:30";
+    const candidate = new Date(`${sessionDate}T${timeValue}:00`);
+    if (Number.isNaN(candidate.getTime())) {
+      return null;
+    }
+    return candidate;
+  }, [sessionDate, meetingTime]);
+
+  const isPastTarget = useMemo(() => {
+    if (!targetDateTime) {
+      return false;
+    }
+    return targetDateTime.getTime() <= Date.now();
+  }, [targetDateTime]);
+
   useEffect(() => {
     if (!selectedSpot || !sessionDate) {
       setForecast(null);
       setForecastError(null);
       return;
     }
+    const key = forecastKey(selectedSpot.name, sessionDate, meetingTime);
+    const cached = readForecastSnapshot(key);
+    if (cached) {
+      setForecast(cached);
+      setForecastError(null);
+      if (isPastTarget) {
+        setForecastLoading(false);
+        return;
+      }
+    } else if (isPastTarget) {
+      setForecast(null);
+      setForecastError(null);
+      setForecastLoading(false);
+      return;
+    }
+
     let cancelled = false;
     const load = async () => {
       setForecastLoading(true);
@@ -101,11 +176,14 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
         });
         if (!cancelled) {
           setForecast(response.data);
+          writeForecastSnapshot(key, response.data);
         }
       } catch (err: any) {
         if (!cancelled) {
-          setForecast(null);
-          setForecastError(err?.response?.data?.detail ?? "Failed to load forecast");
+          if (!cached) {
+            setForecast(null);
+            setForecastError(err?.response?.data?.detail ?? "Failed to load forecast");
+          }
         }
       } finally {
         if (!cancelled) {
@@ -113,11 +191,14 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
         }
       }
     };
-    void load();
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 420);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [selectedSpot?.name, sessionDate, meetingTime]);
+  }, [selectedSpot?.name, sessionDate, meetingTime, isPastTarget]);
 
   const applyForecastToNote = () => {
     if (!forecast?.summary) {
@@ -239,6 +320,18 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
             <p className="tiny">Water: {forecast.water_temperature_c !== null ? `${forecast.water_temperature_c.toFixed(1)}°C` : "n/a"}</p>
             <p className="tiny">Tide: {forecast.tide_level} ({forecast.tide_trend})</p>
           </div>
+        ) : null}
+        {!forecastLoading && !forecastError && !forecast ? (
+          <p className="tiny">
+            {!selectedSpot
+              ? "Select a spot to load forecast."
+              : isPastTarget
+                ? "Historical mode: forecast updates are frozen for past time."
+                : "Pick date/time to load forecast."}
+          </p>
+        ) : null}
+        {forecast && isPastTarget ? (
+          <p className="tiny">Historical snapshot mode: no auto-refresh for past sessions.</p>
         ) : null}
       </div>
       <label>

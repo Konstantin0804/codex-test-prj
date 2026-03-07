@@ -124,8 +124,14 @@ export function FriendsPanel({ onOpenUser, hasUnread }: Props) {
       {hasUnread ? <span className="notify-dot" aria-label="New notifications" /> : null}
       <div className="crew-header">
         <h2>Friends</h2>
-        <button className="ghost crew-toggle" type="button" onClick={() => setOpen((value) => !value)}>
-          {open ? "Collapse" : "Expand"}
+        <button
+          className="ghost crew-toggle icon-toggle"
+          type="button"
+          aria-label={open ? "Collapse friends" : "Expand friends"}
+          title={open ? "Collapse" : "Expand"}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "▴" : "▾"}
         </button>
       </div>
       {!open ? null : (
