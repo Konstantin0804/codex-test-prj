@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -35,3 +37,25 @@ class UserRead(BaseModel):
     username: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+SurfLevel = Literal["beginner", "beginner_plus", "intermediate", "advanced", "pro"]
+
+
+class ProfileRead(BaseModel):
+    nickname: str | None = None
+    telegram_username: str | None = None
+    age: int | None = None
+    city: str | None = None
+    surfboard: str | None = None
+    surf_level: SurfLevel | None = None
+    phone_number: str | None = None
+
+
+class ProfileUpdate(BaseModel):
+    nickname: str = Field(min_length=2, max_length=80)
+    age: int = Field(ge=8, le=90)
+    city: str = Field(min_length=2, max_length=120)
+    surfboard: str = Field(min_length=2, max_length=140)
+    surf_level: SurfLevel
+    phone_number: str = Field(min_length=9, max_length=32)

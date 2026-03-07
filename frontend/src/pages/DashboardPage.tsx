@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { AuthPanel } from "../components/AuthPanel";
 import { AppHeader } from "../components/AppHeader";
 import { InboxPanel } from "../components/InboxPanel";
+import { ProfilePanel } from "../components/ProfilePanel";
 import { SurfCalendar } from "../components/SurfCalendar";
 import { SurfGroupPanel } from "../components/SurfGroupPanel";
 import { SurfSessionComposer } from "../components/SurfSessionComposer";
@@ -194,6 +195,7 @@ export function DashboardPage() {
         </div>
       </div>
       {error ? <p className="error">{error}</p> : null}
+      <ProfilePanel />
       <section className="surf-layout">
         <SurfGroupPanel
           groups={groups}

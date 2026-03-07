@@ -1,4 +1,5 @@
 import secrets
+import re
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -137,3 +138,37 @@ def get_bot_link(user: User) -> str | None:
         return None
     link = bot_start_link(user.telegram_verify_token)
     return link or None
+
+
+def _normalize_phone_es(value: str) -> str:
+    digits = re.sub(r"\D", "", value)
+    if len(digits) < 9:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Phone number must contain at least 9 digits",
+        )
+    local = digits[-9:]
+    return f"+34 {local[:3]}-{local[3:6]}-{local[6:9]}"
+
+
+def update_profile(
+    db: Session,
+    user: User,
+    *,
+    nickname: str,
+    age: int,
+    city: str,
+    surfboard: str,
+    surf_level: str,
+    phone_number: str,
+) -> User:
+    user.nickname = nickname.strip()
+    user.age = age
+    user.city = city.strip()
+    user.surfboard = surfboard.strip()
+    user.surf_level = surf_level
+    user.phone_number = _normalize_phone_es(phone_number)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

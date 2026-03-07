@@ -578,6 +578,30 @@ button.ghost {
   margin-bottom: 0.7rem;
 }
 
+.verify-box {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 0.55rem;
+  display: grid;
+  gap: 0.45rem;
+  background: #fffaf5;
+}
+
+.profile-panel {
+  padding: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.profile-panel h2 {
+  margin: 0 0 0.6rem;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.profile-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
 @media (max-width: 1020px) {
   .main-grid {
     grid-template-columns: 1fr;
