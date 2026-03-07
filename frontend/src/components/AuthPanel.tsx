@@ -186,6 +186,8 @@ export function AuthPanel() {
         setLocalError(
           "You don’t have registered passkeys yet. Please login with username/password and enable Face ID / Touch ID in About Me."
         );
+      } else if (detail.toLowerCase().includes("user not found")) {
+        setLocalError("No account found with this username.");
       } else {
         setLocalError(detail || "Passkey login failed");
       }
