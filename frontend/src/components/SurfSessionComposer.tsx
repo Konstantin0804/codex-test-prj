@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import type { FriendSummary, SessionLevel } from "../features/surf/types";
+import { SurfSpotsMap } from "./SurfSpotsMap";
 import { SURF_SPOTS, findSurfSpotByName } from "../shared/surfSpots";
 
 interface Props {
@@ -54,7 +55,7 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
       return (
         spot.name.toLowerCase().includes(query) || spot.region.toLowerCase().includes(query)
       );
-    }).slice(0, 8);
+    });
   }, [spotName]);
 
   const submit = async (event: FormEvent) => {
@@ -89,33 +90,38 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
   return (
     <form className="card surf-composer" onSubmit={submit}>
       <h2>Plan Session</h2>
-      <label>
-        Spot *
-        <input
-          value={spotName}
-          onChange={(event) => setSpotName(event.target.value)}
-          placeholder="Start typing to search spots..."
-        />
-      </label>
-      {selectedSpot ? (
-        <p className="tiny">
-          <em>{selectedSpot.region}</em>
-        </p>
-      ) : null}
-      <div className="spot-suggest">
-        {spotSuggestions.map((spot) => (
-          <button
-            key={spot.name}
-            type="button"
-            className={`spot-option ${spot.name === selectedSpot?.name ? "active" : ""}`}
-            onClick={() => setSpotName(spot.name)}
-          >
-            <span>{spot.name}</span>
-            <span className="spot-option-meta">
-              <em>{spot.region}</em>
-            </span>
-          </button>
-        ))}
+      <div className="session-spot-layout">
+        <div className="session-spot-picker">
+          <label>
+            Spot *
+            <input
+              value={spotName}
+              onChange={(event) => setSpotName(event.target.value)}
+              placeholder="Start typing to search spots..."
+            />
+          </label>
+          {selectedSpot ? (
+            <p className="tiny">
+              <em>{selectedSpot.region}</em>
+            </p>
+          ) : null}
+          <div className="spot-suggest">
+            {spotSuggestions.map((spot) => (
+              <button
+                key={spot.name}
+                type="button"
+                className={`spot-option ${spot.name === selectedSpot?.name ? "active" : ""}`}
+                onClick={() => setSpotName(spot.name)}
+              >
+                <span>{spot.name}</span>
+                <span className="spot-option-meta">
+                  <em>{spot.region}</em>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <SurfSpotsMap selectedSpotName={selectedSpot?.name ?? null} onSelectSpot={(name) => setSpotName(name)} />
       </div>
       {spotName.trim().length > 0 && !isSpotValid ? (
         <p className="tiny error-text">Select a spot from the list.</p>
@@ -151,6 +157,17 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
       {!isTimeValid ? <p className="tiny error-text">Meet time is required.</p> : null}
       <label>
         Forecast Note
+        <span className="tiny">
+          Recommended: check{" "}
+          <a href="https://www.surfline.com/" target="_blank" rel="noreferrer">
+            Surfline
+          </a>{" "}
+          and{" "}
+          <a href="https://www.windy.com/" target="_blank" rel="noreferrer">
+            Windy
+          </a>
+          .
+        </span>
         <textarea
           value={forecastNote}
           onChange={(event) => setForecastNote(event.target.value)}

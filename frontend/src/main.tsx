@@ -4,6 +4,7 @@ import { Provider } from "react-redux";
 import { store } from "./app/store";
 import { applySession, logout, restoreSession } from "./features/auth/authSlice";
 import { DashboardPage } from "./pages/DashboardPage";
+import "leaflet/dist/leaflet.css";
 import "./shared/styles.css";
 
 void store.dispatch(restoreSession());
