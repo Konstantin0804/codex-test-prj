@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,7 @@ from app.services.auth_service import (
     issue_token,
     parse_favorite_spots,
     trigger_telegram_verification,
+    update_avatar,
     update_profile,
 )
 
@@ -64,7 +65,7 @@ def me(current_user: User = Depends(get_current_user)) -> User:
 @router.get("/profile", response_model=ProfileRead)
 def get_profile(current_user: User = Depends(get_current_user)) -> ProfileRead:
     return ProfileRead(
-        nickname=current_user.nickname,
+        username=current_user.username,
         telegram_username=current_user.telegram_username,
         age=current_user.age,
         city=current_user.city,
@@ -72,6 +73,7 @@ def get_profile(current_user: User = Depends(get_current_user)) -> ProfileRead:
         surf_level=current_user.surf_level,
         phone_number=current_user.phone_number,
         favorite_spots=parse_favorite_spots(current_user.favorite_spots_csv),
+        avatar_url=current_user.avatar_url,
     )
 
 
@@ -84,7 +86,6 @@ def patch_profile(
     updated = update_profile(
         db,
         current_user,
-        nickname=payload.nickname,
         age=payload.age,
         city=payload.city,
         surfboard=payload.surfboard,
@@ -93,7 +94,7 @@ def patch_profile(
         favorite_spots=payload.favorite_spots,
     )
     return ProfileRead(
-        nickname=updated.nickname,
+        username=updated.username,
         telegram_username=updated.telegram_username,
         age=updated.age,
         city=updated.city,
@@ -101,4 +102,31 @@ def patch_profile(
         surf_level=updated.surf_level,
         phone_number=updated.phone_number,
         favorite_spots=parse_favorite_spots(updated.favorite_spots_csv),
+        avatar_url=updated.avatar_url,
+    )
+
+
+@router.post("/profile/avatar", response_model=ProfileRead)
+async def post_profile_avatar(
+    avatar: UploadFile = File(...),
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> ProfileRead:
+    data = await avatar.read()
+    updated = update_avatar(
+        db,
+        current_user,
+        content_type=avatar.content_type or "application/octet-stream",
+        data=data,
+    )
+    return ProfileRead(
+        username=updated.username,
+        telegram_username=updated.telegram_username,
+        age=updated.age,
+        city=updated.city,
+        surfboard=updated.surfboard,
+        surf_level=updated.surf_level,
+        phone_number=updated.phone_number,
+        favorite_spots=parse_favorite_spots(updated.favorite_spots_csv),
+        avatar_url=updated.avatar_url,
     )

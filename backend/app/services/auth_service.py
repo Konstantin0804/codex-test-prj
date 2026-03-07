@@ -11,6 +11,7 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.models.telegram import TelegramChatLink
 from app.models.user import User
 from app.services.surf_service import attach_registration_invite
+from app.services.storage_service import upload_user_avatar
 from app.services.telegram_service import (
     bot_start_link,
     normalize_telegram_username,
@@ -162,7 +163,6 @@ def update_profile(
     db: Session,
     user: User,
     *,
-    nickname: str,
     age: int,
     city: str,
     surfboard: str,
@@ -188,13 +188,21 @@ def update_profile(
             detail=f"Unknown surf spot: {invalid[0]}",
         )
 
-    user.nickname = nickname.strip()
     user.age = age
     user.city = city.strip()
     user.surfboard = surfboard.strip()
     user.surf_level = surf_level
     user.phone_number = _normalize_phone_es(phone_number)
     user.favorite_spots_csv = "|".join(cleaned_spots)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_avatar(db: Session, user: User, content_type: str, data: bytes) -> User:
+    _, public_url = upload_user_avatar(data, content_type, user.id)
+    user.avatar_url = public_url
     db.add(user)
     db.commit()
     db.refresh(user)

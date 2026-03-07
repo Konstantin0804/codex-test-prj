@@ -43,7 +43,7 @@ SurfLevel = Literal["beginner", "beginner_plus", "intermediate", "advanced", "pr
 
 
 class ProfileRead(BaseModel):
-    nickname: str | None = None
+    username: str
     telegram_username: str | None = None
     age: int | None = None
     city: str | None = None
@@ -51,10 +51,10 @@ class ProfileRead(BaseModel):
     surf_level: SurfLevel | None = None
     phone_number: str | None = None
     favorite_spots: list[str] = Field(default_factory=list)
+    avatar_url: str | None = None
 
 
 class ProfileUpdate(BaseModel):
-    nickname: str = Field(min_length=2, max_length=80)
     age: int = Field(ge=8, le=90)
     city: str = Field(min_length=2, max_length=120)
     surfboard: str = Field(min_length=2, max_length=140)

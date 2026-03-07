@@ -8,6 +8,7 @@ import { SurfCalendar } from "../components/SurfCalendar";
 import { SurfGroupPanel } from "../components/SurfGroupPanel";
 import { SurfSessionComposer } from "../components/SurfSessionComposer";
 import { logout } from "../features/auth/authSlice";
+import { api } from "../shared/api";
 import {
   acceptInvite,
   createGroup,
@@ -33,6 +34,8 @@ export function DashboardPage() {
   const dispatch = useAppDispatch();
   const { token, username } = useAppSelector((state) => state.auth);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const {
     groups,
     friends,
@@ -80,6 +83,21 @@ export function DashboardPage() {
     }
     void dispatch(fetchInbox());
   }, [dispatch, token]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    const loadAvatar = async () => {
+      try {
+        const response = await api.get<{ avatar_url: string | null }>("/auth/profile");
+        setAvatarUrl(response.data.avatar_url);
+      } catch {
+        setAvatarUrl(null);
+      }
+    };
+    void loadAvatar();
+  }, [token]);
 
   if (!token) {
     return <AuthPanel />;
@@ -179,9 +197,17 @@ export function DashboardPage() {
   return (
     <main className="layout">
       <AppHeader />
-      <div className="auth-strip">
-        <span>Signed in as @{username}</span>
-        <div className="chip-row">
+      <div className="top-control">
+        <div className="auth-strip">
+          <span>Signed in as @{username}</span>
+        </div>
+        <div className="control-card">
+          <div className="avatar-mini">
+            {avatarUrl ? <img src={avatarUrl} alt="Avatar" /> : <span>{username?.[0]?.toUpperCase() ?? "U"}</span>}
+          </div>
+          <button className="ghost" onClick={() => setAboutOpen(true)}>
+            About Me
+          </button>
           <button className="ghost" onClick={() => void handleCopyInviteLink()}>
             {copyState === "copied"
               ? "Copied"
@@ -195,7 +221,13 @@ export function DashboardPage() {
         </div>
       </div>
       {error ? <p className="error">{error}</p> : null}
-      <ProfilePanel />
+      {aboutOpen ? (
+        <div className="modal-backdrop">
+          <div className="modal-wrap">
+            <ProfilePanel onClose={() => setAboutOpen(false)} onAvatarChange={setAvatarUrl} />
+          </div>
+        </div>
+      ) : null}
       <section className="surf-layout">
         <SurfGroupPanel
           groups={groups}

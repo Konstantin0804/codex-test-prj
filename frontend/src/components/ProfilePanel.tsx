@@ -5,7 +5,7 @@ import { SURF_SPOTS } from "../shared/surfSpots";
 type SurfLevel = "beginner" | "beginner_plus" | "intermediate" | "advanced" | "pro";
 
 interface Profile {
-  nickname: string | null;
+  username: string;
   telegram_username: string | null;
   age: number | null;
   city: string | null;
@@ -13,6 +13,7 @@ interface Profile {
   surf_level: SurfLevel | null;
   phone_number: string | null;
   favorite_spots: string[];
+  avatar_url: string | null;
 }
 
 const LEVEL_LABELS: Record<SurfLevel, string> = {
@@ -44,13 +45,19 @@ function formatPhoneEs(value: string): string {
   return formatted;
 }
 
-export function ProfilePanel() {
+interface Props {
+  onClose: () => void;
+  onAvatarChange: (avatarUrl: string | null) => void;
+}
+
+export function ProfilePanel({ onClose, onAvatarChange }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [nickname, setNickname] = useState("");
+  const [username, setUsername] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
@@ -59,13 +66,14 @@ export function ProfilePanel() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [favoriteSpots, setFavoriteSpots] = useState<string[]>([]);
   const [spotQuery, setSpotQuery] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
         const response = await api.get<Profile>("/auth/profile");
         const profile = response.data;
-        setNickname(profile.nickname ?? "");
+        setUsername(profile.username);
         setTelegramUsername(profile.telegram_username ?? "");
         setAge(profile.age ? String(profile.age) : "");
         setCity(profile.city ?? "");
@@ -73,6 +81,8 @@ export function ProfilePanel() {
         setSurfLevel(profile.surf_level ?? "beginner");
         setPhoneNumber(profile.phone_number ?? "");
         setFavoriteSpots(profile.favorite_spots ?? []);
+        setAvatarUrl(profile.avatar_url ?? null);
+        onAvatarChange(profile.avatar_url ?? null);
       } catch {
         setError("Failed to load profile");
       } finally {
@@ -80,18 +90,16 @@ export function ProfilePanel() {
       }
     };
     void load();
-  }, []);
+  }, [onAvatarChange]);
 
   const ageNum = Number(age);
-  const validNickname = nickname.trim().length >= 2;
   const validAge = Number.isFinite(ageNum) && ageNum >= 8 && ageNum <= 90;
   const validCity = city.trim().length >= 2;
   const validBoard = surfboard.trim().length >= 2;
   const phoneDigits = phoneNumber.replace(/\D/g, "");
   const validPhone = phoneDigits.length === 11 && phoneNumber.startsWith("+34");
   const validFavoriteSpots = favoriteSpots.length >= 1 && favoriteSpots.length <= 3;
-  const canSubmit =
-    validNickname && validAge && validCity && validBoard && validPhone && validFavoriteSpots;
+  const canSubmit = validAge && validCity && validBoard && validPhone && validFavoriteSpots;
 
   const normalizedPhonePreview = useMemo(() => formatPhoneEs(phoneNumber), [phoneNumber]);
   const filteredSpots = useMemo(() => {
@@ -122,6 +130,23 @@ export function ProfilePanel() {
     setFavoriteSpots((prev) => prev.filter((item) => item !== spotName));
   };
 
+  const uploadAvatar = async (file: File) => {
+    setUploadingAvatar(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("avatar", file);
+      const response = await api.post<Profile>("/auth/profile/avatar", form);
+      setAvatarUrl(response.data.avatar_url ?? null);
+      onAvatarChange(response.data.avatar_url ?? null);
+      setSuccess("Avatar updated");
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to upload avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!canSubmit) {
@@ -133,7 +158,6 @@ export function ProfilePanel() {
     setSuccess(null);
     try {
       await api.patch("/auth/profile", {
-        nickname: nickname.trim(),
         age: ageNum,
         city: city.trim(),
         surfboard: surfboard.trim(),
@@ -161,21 +185,41 @@ export function ProfilePanel() {
 
   return (
     <section className="card profile-panel">
-      <h2>About Me</h2>
+      <div className="profile-head">
+        <h2>About Me</h2>
+        <button className="ghost" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
       <form className="profile-form" onSubmit={submit}>
         <div className="row-2">
           <label>
-            Nickname *
-            <input value={nickname} onChange={(event) => setNickname(event.target.value)} />
+            Username (login)
+            <input value={username} disabled />
           </label>
           <label>
-            Telegram *
+            Telegram
             <input value={telegramUsername} disabled />
           </label>
         </div>
-        {!validNickname && nickname.trim().length > 0 ? (
-          <p className="tiny error-text">Nickname: minimum 2 characters.</p>
+
+        <label>
+          Avatar
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void uploadAvatar(file);
+              }
+            }}
+          />
+        </label>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="Avatar" className="profile-avatar-preview" />
         ) : null}
+        {uploadingAvatar ? <p className="tiny">Uploading avatar...</p> : null}
 
         <div className="row-3">
           <label>
@@ -231,6 +275,7 @@ export function ProfilePanel() {
         {!validPhone && phoneNumber.length > 0 ? (
           <p className="tiny error-text">Phone format: +34 647-757-606</p>
         ) : null}
+
         <label>
           TOP 3 favorite spots * (1-3)
           <input

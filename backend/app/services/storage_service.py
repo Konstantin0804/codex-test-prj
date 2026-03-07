@@ -66,3 +66,38 @@ def upload_session_photo(data: bytes, content_type: str, session_id: int, upload
     else:
         public_url = f"https://{settings.r2_bucket}.{settings.r2_account_id}.r2.cloudflarestorage.com/{key}"
     return key, public_url
+
+
+def upload_user_avatar(data: bytes, content_type: str, user_id: int) -> tuple[str, str]:
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Unsupported image type")
+
+    max_bytes = settings.max_photo_upload_mb * 1024 * 1024
+    if len(data) > max_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Image is too large (max {settings.max_photo_upload_mb} MB)",
+        )
+
+    extension = ".jpg"
+    if content_type == "image/png":
+        extension = ".png"
+    elif content_type == "image/webp":
+        extension = ".webp"
+    elif content_type in {"image/heic", "image/heif"}:
+        extension = ".heic"
+
+    key = f"avatars/{user_id}/{uuid.uuid4().hex}{extension}"
+    client = _build_r2_client()
+    client.put_object(
+        Bucket=settings.r2_bucket,
+        Key=key,
+        Body=data,
+        ContentType=content_type,
+        CacheControl="public, max-age=31536000, immutable",
+    )
+    if settings.r2_public_base_url:
+        public_url = f"{settings.r2_public_base_url.rstrip('/')}/{key}"
+    else:
+        public_url = f"https://{settings.r2_bucket}.{settings.r2_account_id}.r2.cloudflarestorage.com/{key}"
+    return key, public_url
