@@ -50,15 +50,22 @@ export function InboxPanel({
       <div className="inbox-head">
         <h2>{detailed ? "Inbox Details" : "Inbox"}</h2>
         <div className="chip-row">
-          {!detailed ? (
+          {!detailed && !expanded ? (
             <button className="ghost" onClick={() => setOpen((value) => !value)}>
-              {expanded ? "Collapse" : "Expand"}
+              Expand
             </button>
           ) : null}
-          <button className="ghost" onClick={() => onRefresh()}>
-            Refresh
-          </button>
-          {!detailed && onOpenDetailsPage ? (
+          {!detailed && expanded ? (
+            <button className="ghost" onClick={() => setOpen((value) => !value)}>
+              Collapse
+            </button>
+          ) : null}
+          {(detailed || expanded) ? (
+            <button className="ghost" onClick={() => onRefresh()}>
+              Refresh
+            </button>
+          ) : null}
+          {!detailed && expanded && onOpenDetailsPage ? (
             <button className="ghost" onClick={onOpenDetailsPage}>
               Open full inbox
             </button>
