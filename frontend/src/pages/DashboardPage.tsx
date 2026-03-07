@@ -130,7 +130,7 @@ export function DashboardPage() {
   if (!token && !sessionChecked) {
     return (
       <main className="layout auth-layout">
-        <section className="card auth-card">
+        <section className="card auth-card checking-card">
           <h1>
             Checking session
             <span className="loading-dots" aria-hidden="true">

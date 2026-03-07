@@ -40,7 +40,7 @@ export function InboxPanel({
   onOpenDetailsPage,
   onCloseDetailsPage
 }: Props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const visibleItems = detailed ? items : items.slice(0, 6);
   const expanded = detailed || open;
 
@@ -49,23 +49,18 @@ export function InboxPanel({
       {hasUnread ? <span className="notify-dot" aria-label="New notifications" /> : null}
       <div className="inbox-head">
         <h2>{detailed ? "Inbox Details" : "Inbox"}</h2>
-        <div className="chip-row">
-          {!detailed && !expanded ? (
-            <button className="ghost" onClick={() => setOpen((value) => !value)}>
-              Expand
-            </button>
-          ) : null}
-          {!detailed && expanded ? (
-            <button className="ghost" onClick={() => setOpen((value) => !value)}>
-              Collapse
-            </button>
-          ) : null}
-          {(detailed || expanded) ? (
-            <button className="ghost" onClick={() => onRefresh()}>
-              Refresh
-            </button>
-          ) : null}
-          {!detailed && expanded && onOpenDetailsPage ? (
+        {!detailed ? (
+          <button className="ghost" onClick={() => setOpen((value) => !value)}>
+            {expanded ? "Collapse" : "Expand"}
+          </button>
+        ) : null}
+      </div>
+      {(detailed || expanded) ? (
+        <div className="inbox-actions-row">
+          <button className="ghost" onClick={() => onRefresh()}>
+            Refresh
+          </button>
+          {!detailed && onOpenDetailsPage ? (
             <button className="ghost" onClick={onOpenDetailsPage}>
               Open full inbox
             </button>
@@ -76,7 +71,7 @@ export function InboxPanel({
             </button>
           ) : null}
         </div>
-      </div>
+      ) : null}
       {!expanded ? null : (
         <>
       {loading ? <p className="status">Loading inbox...</p> : null}

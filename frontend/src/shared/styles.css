@@ -521,7 +521,6 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: nowrap;
 }
 
 .inbox-head h2 {
@@ -530,14 +529,19 @@ body {
   flex: 0 0 auto;
 }
 
-.inbox-head .chip-row {
-  margin-top: 0;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  flex: 1 1 auto;
+.inbox-head > button {
+  white-space: nowrap;
+  padding: 0.35rem 0.6rem;
 }
 
-.inbox-head .chip-row button {
+.inbox-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.inbox-actions-row button {
   white-space: nowrap;
   padding: 0.35rem 0.6rem;
 }
@@ -835,6 +839,12 @@ button.ghost {
 .auth-submit-btn,
 .auth-switch-btn {
   width: 100%;
+}
+
+.checking-card {
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+  min-width: 0;
 }
 
 .loading-dots {
