@@ -984,6 +984,12 @@ button.ghost {
   width: 100%;
 }
 
+.auth-login-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
 .checking-card {
   width: fit-content;
   max-width: calc(100vw - 2rem);

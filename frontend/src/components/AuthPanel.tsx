@@ -246,38 +246,43 @@ export function AuthPanel() {
               Open bot manually, press Start, then login.
             </p>
           ) : null}
-          <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
-            {loading
-              ? "Please wait..."
-              : mode === "login"
-                ? "Sign in"
+          {mode === "login" ? (
+            <div className="auth-login-actions">
+              <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
+                {loading ? "Please wait..." : "Sign in"}
+              </button>
+              <button
+                className="ghost auth-submit-btn"
+                type="button"
+                onClick={() => {
+                  setMode("forgot");
+                  setLocalError(null);
+                  setLocalStatus(null);
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
+          ) : (
+            <button className="auth-submit-btn" type="submit" disabled={submitDisabled}>
+              {loading
+                ? "Please wait..."
                 : mode === "register"
                   ? "Create account"
                   : mode === "forgot"
                     ? "Send reset link"
                     : "Save new password"}
-          </button>
+            </button>
+          )}
         </form>
         {mode === "login" ? (
-          <>
-            <button
-              className="ghost auth-switch-btn"
-              onClick={() => {
-                setMode("forgot");
-                setLocalError(null);
-                setLocalStatus(null);
-              }}
-            >
-              Forgot password?
-            </button>
-            <button
-              className="ghost auth-switch-btn"
-              disabled={continueDisabled}
-              onClick={() => setMode("register")}
-            >
-              Need an account? Register
-            </button>
-          </>
+          <button
+            className="ghost auth-switch-btn"
+            disabled={continueDisabled}
+            onClick={() => setMode("register")}
+          >
+            Need an account? Register
+          </button>
         ) : null}
         {mode === "register" ? (
           <button
