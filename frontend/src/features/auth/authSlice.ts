@@ -9,21 +9,17 @@ import type {
   RegisterResponse
 } from "./types";
 
-const savedToken = localStorage.getItem("pulseboard_token");
-const savedUsername = localStorage.getItem("pulseboard_username");
-
 const initialState: AuthState = {
-  token: savedToken,
-  username: savedUsername,
+  token: null,
+  username: null,
   loading: false,
+  sessionChecked: false,
   error: null,
   registerMessage: null,
   registerBotLink: null
 };
 
-const persistAuth = (payload: AuthResponse) => {
-  localStorage.setItem("pulseboard_token", payload.access_token);
-  localStorage.setItem("pulseboard_username", payload.username);
+const applyAuth = (payload: AuthResponse) => {
   setAuthToken(payload.access_token);
 };
 
@@ -32,13 +28,27 @@ export const login = createAsyncThunk(
   async (payload: LoginPayload, { rejectWithValue }) => {
     try {
       const response = await api.post<AuthResponse>("/auth/login", payload);
-      persistAuth(response.data);
+      applyAuth(response.data);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         return rejectWithValue(error.response?.data?.detail ?? "Login failed");
       }
       return rejectWithValue("Login failed");
+    }
+  }
+);
+
+export const restoreSession = createAsyncThunk(
+  "auth/restoreSession",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.post<AuthResponse>("/auth/refresh");
+      applyAuth(response.data);
+      return response.data;
+    } catch {
+      clearAuthToken();
+      return rejectWithValue("Session restore failed");
     }
   }
 );
@@ -58,30 +68,56 @@ export const register = createAsyncThunk(
   }
 );
 
+export const logoutSession = createAsyncThunk("auth/logoutSession", async () => {
+  try {
+    await api.post("/auth/logout");
+  } catch {
+    // Ignore network failures here; local session is still cleared on client.
+  }
+});
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    applySession: (state, action: { payload: AuthResponse }) => {
+      state.token = action.payload.access_token;
+      state.username = action.payload.username;
+      state.sessionChecked = true;
+      state.error = null;
+      applyAuth(action.payload);
+    },
     logout: (state) => {
       state.token = null;
       state.username = null;
+      state.sessionChecked = true;
       state.error = null;
       state.registerMessage = null;
       state.registerBotLink = null;
-      localStorage.removeItem("pulseboard_token");
-      localStorage.removeItem("pulseboard_username");
       clearAuthToken();
     },
-    hydrateAuth: (state) => {
-      if (state.token) {
-        setAuthToken(state.token);
-      }
-    }
   },
   extraReducers: (builder) => {
     builder
+      .addCase(restoreSession.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(restoreSession.fulfilled, (state, action) => {
+        state.loading = false;
+        state.sessionChecked = true;
+        state.token = action.payload.access_token;
+        state.username = action.payload.username;
+      })
+      .addCase(restoreSession.rejected, (state) => {
+        state.loading = false;
+        state.sessionChecked = true;
+        state.token = null;
+        state.username = null;
+      })
       .addCase(login.pending, (state) => {
         state.loading = true;
+        state.sessionChecked = true;
         state.error = null;
         state.registerMessage = null;
       })
@@ -112,5 +148,5 @@ const authSlice = createSlice({
   }
 });
 
-export const { logout, hydrateAuth } = authSlice.actions;
+export const { logout, applySession } = authSlice.actions;
 export default authSlice.reducer;

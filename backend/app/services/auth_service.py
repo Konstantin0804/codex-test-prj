@@ -1,5 +1,6 @@
 import secrets
 import re
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -7,7 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.surf_spots import SURF_SPOT_NAMES
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    generate_refresh_token,
+    hash_password,
+    hash_refresh_token,
+    verify_password,
+)
+from app.models.auth import RefreshSession
 from app.models.telegram import TelegramChatLink
 from app.models.user import User
 from app.services.surf_service import attach_registration_invite
@@ -117,6 +125,64 @@ def issue_token(user: User) -> str:
         algorithm=settings.jwt_algorithm,
         expires_minutes=settings.access_token_expire_minutes,
     )
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def issue_refresh_token(db: Session, user: User) -> str:
+    raw_token = generate_refresh_token()
+    token_hash = hash_refresh_token(raw_token, settings.jwt_secret_key)
+    expires_at = _utc_now() + timedelta(days=max(settings.refresh_token_expire_days, 1))
+    db.add(
+        RefreshSession(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+    )
+    db.commit()
+    return raw_token
+
+
+def rotate_refresh_token(db: Session, raw_token: str) -> tuple[User, str]:
+    token_hash = hash_refresh_token(raw_token, settings.jwt_secret_key)
+    session = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_hash))
+    now = _utc_now()
+    if not session or session.revoked_at or session.expires_at <= now:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh session")
+
+    user = db.get(User, session.user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh session")
+
+    session.revoked_at = now
+    db.add(session)
+
+    new_raw = generate_refresh_token()
+    new_hash = hash_refresh_token(new_raw, settings.jwt_secret_key)
+    db.add(
+        RefreshSession(
+            user_id=user.id,
+            token_hash=new_hash,
+            expires_at=now + timedelta(days=max(settings.refresh_token_expire_days, 1)),
+        )
+    )
+    db.commit()
+    return user, new_raw
+
+
+def revoke_refresh_token(db: Session, raw_token: str | None) -> None:
+    if not raw_token:
+        return
+    token_hash = hash_refresh_token(raw_token, settings.jwt_secret_key)
+    session = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_hash))
+    if not session or session.revoked_at:
+        return
+    session.revoked_at = _utc_now()
+    db.add(session)
+    db.commit()
 
 
 def trigger_telegram_verification(user: User) -> tuple[str, str | None]:

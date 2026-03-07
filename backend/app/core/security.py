@@ -39,3 +39,12 @@ def create_access_token(subject: str, secret_key: str, algorithm: str, expires_m
 
 def decode_access_token(token: str, secret_key: str, algorithm: str) -> dict:
     return jwt.decode(token, secret_key, algorithms=[algorithm])
+
+
+def generate_refresh_token() -> str:
+    return secrets.token_urlsafe(48).replace("-", "").replace("_", "")
+
+
+def hash_refresh_token(token: str, secret_key: str) -> str:
+    digest = hashlib.sha256(f"{token}:{secret_key}".encode("utf-8")).hexdigest()
+    return digest

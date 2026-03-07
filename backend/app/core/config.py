@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 120
+    refresh_token_expire_days: int = 30
+    refresh_cookie_name: str = "pulseboard_refresh"
+    refresh_cookie_secure: bool = False
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
     telegram_webhook_secret: str = ""

@@ -1,3 +1,4 @@
+from app.models.auth import RefreshSession
 from app.models.surf import (
     GroupInvite,
     GroupMembership,
@@ -22,6 +23,7 @@ from app.models.task import Task, TaskStatus
 from app.models.user import User
 
 __all__ = [
+    "RefreshSession",
     "User",
     "Task",
     "TaskStatus",

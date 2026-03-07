@@ -403,8 +403,9 @@ def create_session_invite(
                 chat_link.chat_id,
                 (
                     f"You were invited to a surf session at {session.spot_name} ({session.session_date}).\n"
-                    f"Register in SurfCrew Planner: {register_link}"
+                    f'<a href="{register_link}">Open registration link</a>'
                 ),
+                parse_mode="HTML",
             )
 
     db.commit()

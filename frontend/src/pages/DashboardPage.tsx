@@ -10,7 +10,7 @@ import { SurfCalendar } from "../components/SurfCalendar";
 import { SurfGroupPanel } from "../components/SurfGroupPanel";
 import { SurfSessionComposer } from "../components/SurfSessionComposer";
 import { UserProfileModal } from "../components/UserProfileModal";
-import { logout } from "../features/auth/authSlice";
+import { logout, logoutSession } from "../features/auth/authSlice";
 import { api } from "../shared/api";
 import {
   acceptInvite,
@@ -35,7 +35,7 @@ import type { ReportCreatePayload, SessionCreatePayload } from "../features/surf
 
 export function DashboardPage() {
   const dispatch = useAppDispatch();
-  const { token, username } = useAppSelector((state) => state.auth);
+  const { token, username, sessionChecked } = useAppSelector((state) => state.auth);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [aboutOpen, setAboutOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -103,6 +103,16 @@ export function DashboardPage() {
     };
     void loadAvatar();
   }, [token]);
+
+  if (!token && !sessionChecked) {
+    return (
+      <main className="layout auth-layout">
+        <section className="card auth-card">
+          <h1>Checking session...</h1>
+        </section>
+      </main>
+    );
+  }
 
   if (!token) {
     return <AuthPanel />;
@@ -210,17 +220,23 @@ export function DashboardPage() {
           <div className="avatar-mini">
             {avatarUrl ? <img src={avatarUrl} alt="Avatar" /> : <span>{username?.[0]?.toUpperCase() ?? "U"}</span>}
           </div>
-          <button className="ghost" onClick={() => setAboutOpen(true)}>
+          <button className="ghost control-about" onClick={() => setAboutOpen(true)}>
             About Me
           </button>
-          <button className="ghost" onClick={() => void handleCopyInviteLink()}>
+          <button className="ghost control-share" onClick={() => void handleCopyInviteLink()}>
             {copyState === "copied"
               ? "Copied"
               : copyState === "error"
                 ? "Copy failed"
                 : "Share invite link"}
           </button>
-          <button className="ghost" onClick={() => dispatch(logout())}>
+          <button
+            className="ghost control-logout"
+            onClick={async () => {
+              await dispatch(logoutSession());
+              dispatch(logout());
+            }}
+          >
             Logout
           </button>
         </div>

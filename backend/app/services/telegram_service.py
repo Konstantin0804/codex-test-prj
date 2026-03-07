@@ -46,13 +46,22 @@ def get_chat_link(db: Session, telegram_username: str) -> TelegramChatLink | Non
     return db.scalar(select(TelegramChatLink).where(TelegramChatLink.telegram_username == username_norm))
 
 
-def send_message(chat_id: int, text: str, reply_markup: dict | None = None) -> None:
+def send_message(
+    chat_id: int,
+    text: str,
+    reply_markup: dict | None = None,
+    parse_mode: str | None = None,
+    disable_web_page_preview: bool = True,
+) -> None:
     if not settings.telegram_bot_token:
         return
 
     payload: dict = {"chat_id": chat_id, "text": text}
     if reply_markup:
         payload["reply_markup"] = reply_markup
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    payload["disable_web_page_preview"] = disable_web_page_preview
 
     try:
         httpx.post(_bot_api_url("sendMessage"), json=payload, timeout=8)

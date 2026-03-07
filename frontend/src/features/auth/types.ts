@@ -2,6 +2,7 @@ export interface AuthState {
   token: string | null;
   username: string | null;
   loading: boolean;
+  sessionChecked: boolean;
   error: string | null;
   registerMessage: string | null;
   registerBotLink: string | null;

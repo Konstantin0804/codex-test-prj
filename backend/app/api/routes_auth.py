@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db_dep
+from app.core.config import get_settings
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
@@ -19,13 +20,43 @@ from app.services.auth_service import (
     create_user,
     get_bot_link,
     issue_token,
+    issue_refresh_token,
     parse_favorite_spots,
+    revoke_refresh_token,
+    rotate_refresh_token,
     trigger_telegram_verification,
     update_avatar,
     update_profile,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+settings = get_settings()
+
+
+def _set_refresh_cookie(response: Response, raw_token: str) -> None:
+    cookie_secure = settings.refresh_cookie_secure
+    same_site = "none" if cookie_secure else "lax"
+    response.set_cookie(
+        key=settings.refresh_cookie_name,
+        value=raw_token,
+        httponly=True,
+        secure=cookie_secure,
+        samesite=same_site,
+        max_age=max(settings.refresh_token_expire_days, 1) * 24 * 60 * 60,
+        path="/",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    cookie_secure = settings.refresh_cookie_secure
+    same_site = "none" if cookie_secure else "lax"
+    response.delete_cookie(
+        key=settings.refresh_cookie_name,
+        httponly=True,
+        secure=cookie_secure,
+        samesite=same_site,
+        path="/",
+    )
 
 
 @router.get("/check-username", response_model=UsernameCheckResponse)
@@ -51,10 +82,37 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db_dep)) -> Reg
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db_dep)) -> AuthResponse:
+def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db_dep)) -> AuthResponse:
     user = authenticate_user(db, payload.username.strip().lower(), payload.password)
     token = issue_token(user)
+    refresh = issue_refresh_token(db, user)
+    _set_refresh_cookie(response, refresh)
     return AuthResponse(access_token=token, username=user.username)
+
+
+@router.post("/refresh", response_model=AuthResponse)
+def refresh_session(
+    response: Response,
+    refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
+    db: Session = Depends(get_db_dep),
+) -> AuthResponse:
+    if not refresh_cookie:
+        raise HTTPException(status_code=401, detail="Missing refresh session")
+    user, new_refresh = rotate_refresh_token(db, refresh_cookie)
+    _set_refresh_cookie(response, new_refresh)
+    token = issue_token(user)
+    return AuthResponse(access_token=token, username=user.username)
+
+
+@router.post("/logout")
+def logout(
+    response: Response,
+    refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
+    db: Session = Depends(get_db_dep),
+) -> dict[str, str]:
+    revoke_refresh_token(db, refresh_cookie)
+    _clear_refresh_cookie(response)
+    return {"status": "ok"}
 
 
 @router.get("/me", response_model=UserRead)
