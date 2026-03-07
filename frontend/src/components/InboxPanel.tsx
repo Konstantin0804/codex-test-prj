@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { InboxItem } from "../features/surf/types";
 
 interface Props {
@@ -39,7 +40,9 @@ export function InboxPanel({
   onOpenDetailsPage,
   onCloseDetailsPage
 }: Props) {
+  const [open, setOpen] = useState(true);
   const visibleItems = detailed ? items : items.slice(0, 6);
+  const expanded = detailed || open;
 
   return (
     <section className="card inbox-panel panel-with-dot">
@@ -47,6 +50,11 @@ export function InboxPanel({
       <div className="inbox-head">
         <h2>{detailed ? "Inbox Details" : "Inbox"}</h2>
         <div className="chip-row">
+          {!detailed ? (
+            <button className="ghost" onClick={() => setOpen((value) => !value)}>
+              {expanded ? "Collapse" : "Expand"}
+            </button>
+          ) : null}
           <button className="ghost" onClick={() => onRefresh()}>
             Refresh
           </button>
@@ -62,6 +70,8 @@ export function InboxPanel({
           ) : null}
         </div>
       </div>
+      {!expanded ? null : (
+        <>
       {loading ? <p className="status">Loading inbox...</p> : null}
       <div className="inbox-list">
         {visibleItems.length === 0 ? <p className="tiny">No notifications yet.</p> : null}
@@ -131,6 +141,8 @@ export function InboxPanel({
           <p className="tiny">Showing {visibleItems.length} latest items. Open full inbox for all notifications.</p>
         ) : null}
       </div>
+        </>
+      )}
     </section>
   );
 }

@@ -376,6 +376,25 @@ export function DashboardPage() {
               onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
               hasUnread={unreadFriendsCount > 0}
             />
+            <InboxPanel
+              items={inbox}
+              loading={loadingInbox}
+              acceptingInviteIds={acceptingInviteIds}
+              decliningInviteIds={decliningInviteIds}
+              hasUnread={unreadInboxCount > 0}
+              onRefresh={async () => {
+                await dispatch(fetchInbox());
+              }}
+              onAcceptInvite={handleAcceptInvite}
+              onDeclineInvite={handleDeclineInvite}
+              onAcceptFriendRequest={handleAcceptFriendRequest}
+              onDeclineFriendRequest={handleDeclineFriendRequest}
+              onMarkRead={handleMarkInboxRead}
+              onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
+              onOpenGroup={(groupId) => setCrewModalGroupId(groupId)}
+              onOpenSession={(sessionId) => setSessionDetailId(sessionId)}
+              onOpenDetailsPage={() => setInboxDetailsOpen(true)}
+            />
           </div>
 
           <section className="surf-main">
@@ -417,25 +436,6 @@ export function DashboardPage() {
                   onSubmitFeedback={handleSubmitFeedback}
                   onLoadPhotos={handleLoadPhotos}
                   onUploadPhoto={handleUploadPhoto}
-                />
-                <InboxPanel
-                  items={inbox}
-                  loading={loadingInbox}
-                  acceptingInviteIds={acceptingInviteIds}
-                  decliningInviteIds={decliningInviteIds}
-                  hasUnread={unreadInboxCount > 0}
-                  onRefresh={async () => {
-                    await dispatch(fetchInbox());
-                  }}
-                  onAcceptInvite={handleAcceptInvite}
-                  onDeclineInvite={handleDeclineInvite}
-                  onAcceptFriendRequest={handleAcceptFriendRequest}
-                  onDeclineFriendRequest={handleDeclineFriendRequest}
-                  onMarkRead={handleMarkInboxRead}
-                  onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
-                  onOpenGroup={(groupId) => setCrewModalGroupId(groupId)}
-                  onOpenSession={(sessionId) => setSessionDetailId(sessionId)}
-                  onOpenDetailsPage={() => setInboxDetailsOpen(true)}
                 />
               </>
             )}
