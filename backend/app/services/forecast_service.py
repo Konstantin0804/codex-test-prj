@@ -38,6 +38,21 @@ def _closest_index(times: list[str], target_time: time) -> int:
     return best_idx
 
 
+def _nearest_non_null(values: list[float | None], preferred_idx: int) -> float | None:
+    if not values:
+        return None
+    if 0 <= preferred_idx < len(values) and isinstance(values[preferred_idx], (int, float)):
+        return values[preferred_idx]
+    for radius in range(1, max(len(values), 1)):
+        left = preferred_idx - radius
+        right = preferred_idx + radius
+        if left >= 0 and isinstance(values[left], (int, float)):
+            return values[left]
+        if right < len(values) and isinstance(values[right], (int, float)):
+            return values[right]
+    return None
+
+
 def _cardinal_direction(deg: float | None) -> str:
     if deg is None:
         return "N/A"
@@ -173,8 +188,16 @@ def get_open_meteo_forecast(
     wave_direction = wave_directions[marine_idx] if marine_idx >= 0 and marine_idx < len(wave_directions) else None
     wave_period = wave_periods[marine_idx] if marine_idx >= 0 and marine_idx < len(wave_periods) else None
     water_temp = water_temps[marine_idx] if marine_idx >= 0 and marine_idx < len(water_temps) else None
-    wind_speed = wind_speeds[weather_idx] if weather_idx >= 0 and weather_idx < len(wind_speeds) else None
-    wind_direction = wind_dirs[weather_idx] if weather_idx >= 0 and weather_idx < len(wind_dirs) else None
+    wind_speed = (
+        _nearest_non_null(wind_speeds, weather_idx)
+        if weather_idx >= 0 and weather_idx < len(wind_speeds)
+        else None
+    )
+    wind_direction = (
+        _nearest_non_null(wind_dirs, weather_idx)
+        if weather_idx >= 0 and weather_idx < len(wind_dirs)
+        else None
+    )
 
     tide_level = _tide_band(current_sea, sea_min, sea_max)
     tide_trend = _tide_trend(prev_sea, current_sea, next_sea)
@@ -217,5 +240,8 @@ def get_open_meteo_forecast(
         "tide_trend": tide_trend,
         "summary": summary,
     }
-    _cache[key] = (_now_utc(), payload)
+    # Do not cache incomplete weather responses to avoid sticky "wind n/a" after transient upstream issues.
+    weather_has_data = bool(weather_times) and any(isinstance(v, (int, float)) for v in wind_speeds)
+    if weather_has_data or not marine_error:
+        _cache[key] = (_now_utc(), payload)
     return payload

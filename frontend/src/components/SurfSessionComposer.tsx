@@ -39,6 +39,19 @@ interface SpotForecast {
   summary: string;
 }
 
+function windArrow(cardinal: string): string {
+  const key = (cardinal || "").toUpperCase();
+  if (key === "N") return "⬆️";
+  if (key === "NE") return "↗️";
+  if (key === "E") return "➡️";
+  if (key === "SE") return "↘️";
+  if (key === "S") return "⬇️";
+  if (key === "SW") return "↙️";
+  if (key === "W") return "⬅️";
+  if (key === "NW") return "↖️";
+  return "•";
+}
+
 const FORECAST_SNAPSHOT_PREFIX = "surf_forecast_snapshot_v1:";
 const FORECAST_CACHE_TTL_MS = 20 * 60 * 1000;
 
@@ -322,7 +335,12 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
           {forecast ? (
             <div className="forecast-inline">
               <span className="forecast-pill">🌊 {forecast.wave_height_m !== null ? `${forecast.wave_height_m.toFixed(1)} m` : "n/a"}</span>
-              <span className="forecast-pill">💨 {forecast.wind_speed_kmh !== null ? `${Math.round(forecast.wind_speed_kmh)} km/h ${forecast.wind_direction_cardinal}` : "n/a"}</span>
+              <span className="forecast-pill">
+                💨{" "}
+                {forecast.wind_speed_kmh !== null
+                  ? `${Math.round(forecast.wind_speed_kmh)} km/h ${windArrow(forecast.wind_direction_cardinal)} ${forecast.wind_direction_cardinal}`
+                  : "n/a"}
+              </span>
               <span className="forecast-pill">🌡️ {forecast.water_temperature_c !== null ? `${forecast.water_temperature_c.toFixed(1)}°C` : "n/a"}</span>
               <span className="forecast-pill">🌊⬍ {forecast.tide_level} ({forecast.tide_trend})</span>
             </div>
