@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db_dep
+from app.models.surf import FriendRequest, FriendRequestStatus, SessionInvite, SessionInviteStatus
 from app.models.user import User
 from app.schemas.surf import (
     FriendRequestCreate,
@@ -66,6 +67,43 @@ from app.services.surf_service import (
 )
 
 router = APIRouter(prefix="/surf", tags=["surf"])
+
+
+def _resolve_inbox_action_state(db: Session, item, current_user: User) -> tuple[str, bool]:
+    if item.related_friend_request_id:
+        request = db.get(FriendRequest, item.related_friend_request_id)
+        if not request:
+            return "none", False
+        if request.to_user_id != current_user.id:
+            return request.status.value, False
+        if request.status == FriendRequestStatus.pending:
+            return "pending", True
+        return request.status.value, False
+
+    if item.related_invite_id:
+        invite = db.get(SessionInvite, item.related_invite_id)
+        if not invite:
+            return "none", False
+        is_target = (
+            (invite.invited_user_id == current_user.id)
+            or (
+                invite.invited_user_id is None
+                and bool(invite.invited_telegram_username)
+                and invite.invited_telegram_username == current_user.telegram_username
+            )
+        )
+        status_value = invite.status.value
+        if not is_target:
+            return status_value, False
+        if invite.status in [SessionInviteStatus.pending, SessionInviteStatus.pending_verification]:
+            return "pending", True
+        if invite.status == SessionInviteStatus.accepted:
+            return "accepted", False
+        if invite.status == SessionInviteStatus.declined:
+            return "declined", False
+        return status_value, False
+
+    return "none", False
 
 
 @router.post("/groups", response_model=GroupRead)
@@ -682,6 +720,7 @@ def get_inbox(
         if item.related_user_id:
             related_user = db.get(User, item.related_user_id)
             related_username = related_user.username if related_user else None
+        action_status, action_required = _resolve_inbox_action_state(db, item, current_user)
         rows.append(
             InboxItemRead(
                 id=item.id,
@@ -695,6 +734,8 @@ def get_inbox(
                 related_session_id=item.related_session_id,
                 related_user_id=item.related_user_id,
                 related_username=related_username,
+                action_status=action_status,
+                action_required=action_required,
                 created_at=item.created_at,
             )
         )
@@ -712,6 +753,7 @@ def patch_inbox_read(
     if item.related_user_id:
         related_user = db.get(User, item.related_user_id)
         related_username = related_user.username if related_user else None
+    action_status, action_required = _resolve_inbox_action_state(db, item, current_user)
     return InboxItemRead(
         id=item.id,
         item_type=item.item_type,
@@ -724,5 +766,7 @@ def patch_inbox_read(
         related_session_id=item.related_session_id,
         related_user_id=item.related_user_id,
         related_username=related_username,
+        action_status=action_status,
+        action_required=action_required,
         created_at=item.created_at,
     )

@@ -570,6 +570,10 @@ body {
   margin: 0.2rem 0;
 }
 
+.inbox-action-status {
+  margin-top: 0.3rem;
+}
+
 .inbox-page-wrap {
   display: grid;
 }

@@ -214,4 +214,6 @@ class InboxItemRead(BaseModel):
     related_session_id: int | None = None
     related_user_id: int | None = None
     related_username: str | None = None
+    action_status: str = "none"
+    action_required: bool = False
     created_at: datetime

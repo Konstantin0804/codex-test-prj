@@ -43,6 +43,18 @@ export function InboxPanel({
   const [open, setOpen] = useState(false);
   const visibleItems = detailed ? items : items.slice(0, 6);
   const expanded = detailed || open;
+  const actionLabel = (status: string): string => {
+    if (status === "pending") {
+      return "No action yet";
+    }
+    if (status === "accepted") {
+      return "Accepted";
+    }
+    if (status === "declined") {
+      return "Declined";
+    }
+    return "Info only";
+  };
 
   return (
     <section className="card inbox-panel panel-with-dot">
@@ -81,6 +93,11 @@ export function InboxPanel({
           <article key={item.id} className={`inbox-item ${item.is_read ? "read" : ""}`}>
             <h4>{item.title}</h4>
             <p>{item.body}</p>
+            {detailed && item.action_status !== "none" ? (
+              <p className="tiny inbox-action-status">
+                Status: <strong>{actionLabel(item.action_status)}</strong>
+              </p>
+            ) : null}
             <div className="chip-row">
               {!item.is_read ? (
                 <button className="ghost" onClick={() => onMarkRead(item.id)}>
@@ -102,7 +119,7 @@ export function InboxPanel({
                   Session details
                 </button>
               ) : null}
-              {item.item_type === "friend_request" && item.related_friend_request_id ? (
+              {item.item_type === "friend_request" && item.related_friend_request_id && item.action_required ? (
                 <>
                   <button onClick={() => onAcceptFriendRequest(item.related_friend_request_id as number)}>
                     Accept friend
@@ -115,7 +132,7 @@ export function InboxPanel({
                   </button>
                 </>
               ) : null}
-              {item.item_type === "session_invite" && item.related_invite_id ? (
+              {item.item_type === "session_invite" && item.related_invite_id && item.action_required ? (
                 <>
                   <button
                     onClick={() => onAcceptInvite(item.related_invite_id as number)}

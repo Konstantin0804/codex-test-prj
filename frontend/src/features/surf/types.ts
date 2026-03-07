@@ -92,6 +92,8 @@ export interface InboxItem {
   related_session_id: number | null;
   related_user_id: number | null;
   related_username: string | null;
+  action_status: string;
+  action_required: boolean;
   created_at: string;
 }
 
