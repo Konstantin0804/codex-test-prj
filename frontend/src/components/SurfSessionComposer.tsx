@@ -59,6 +59,14 @@ function windArrow(cardinal: string): string {
 const FORECAST_SNAPSHOT_PREFIX = "surf_forecast_snapshot_v1:";
 const FORECAST_CACHE_TTL_MS = 20 * 60 * 1000;
 
+function defaultMeetingTimePlusHour(): string {
+  const value = new Date();
+  value.setHours(value.getHours() + 1);
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 function forecastKey(spotName: string, sessionDate: string, meetingTime: string): string {
   return `${FORECAST_SNAPSHOT_PREFIX}${spotName}|${sessionDate}|${meetingTime || "06:30"}`;
 }
@@ -99,7 +107,7 @@ function writeForecastSnapshot(key: string, payload: SpotForecast): void {
 export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmit }: Props) {
   const [spotName, setSpotName] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
-  const [meetingTime, setMeetingTime] = useState("06:30");
+  const [meetingTime, setMeetingTime] = useState(() => defaultMeetingTimePlusHour());
   const [level, setLevel] = useState<SessionLevel>("mixed");
   const [forecastNote, setForecastNote] = useState("");
   const [logisticsNote, setLogisticsNote] = useState("");
