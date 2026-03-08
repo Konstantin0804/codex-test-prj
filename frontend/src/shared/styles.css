@@ -1273,6 +1273,16 @@ button.ghost {
 
   .about-top-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.6rem;
+  }
+
+  .about-top-row > label {
+    min-width: 0;
+  }
+
+  .about-top-row input {
+    min-width: 0;
+    width: 100%;
   }
 
   .about-surf-row {
