@@ -217,6 +217,7 @@ def _notify_friend_request(
     request_id: int | None = None,
     is_resend: bool = False,
 ) -> None:
+    app_link = _public_web_url()
     title = "Friend request reminder" if is_resend else "New friend request"
     body = (
         f"{from_user.username} sent your friend request again."
@@ -237,9 +238,13 @@ def _notify_friend_request(
         send_message(
             chat_id,
             (
-                f"{from_user.username} sent your friend request again in SurfCrew Planner."
+                f"{from_user.username} sent your friend request again in SurfCrew Planner.\n"
+                f"Open app: {app_link}"
                 if is_resend
-                else f"{from_user.username} sent you a friend request in SurfCrew Planner. Open app inbox to accept."
+                else (
+                    f"{from_user.username} sent you a friend request in SurfCrew Planner.\n"
+                    f"Open app: {app_link}"
+                )
             ),
         )
 
@@ -528,9 +533,13 @@ def create_group_member_invite(db: Session, group_id: int, current_user: User, u
     )
     chat_id = _resolve_chat_id(db, target)
     if chat_id:
+        app_link = _public_web_url()
         send_message(
             chat_id,
-            f"{current_user.username} invited you to join crew {group.name} in SurfCrew Planner. Open app inbox to accept.",
+            (
+                f"{current_user.username} invited you to join crew {group.name} in SurfCrew Planner.\n"
+                f"Open app: {app_link}"
+            ),
         )
 
     db.commit()
@@ -795,9 +804,13 @@ def create_session_invite(
             related_user_id=inviter.id,
         )
         if target.telegram_chat_id:
+            app_link = _public_web_url()
             send_message(
                 target.telegram_chat_id,
-                f"{inviter.username} invited you to surf at {session.spot_name} ({session.session_date}). Open app inbox to accept.",
+                (
+                    f"{inviter.username} invited you to surf at {session.spot_name} ({session.session_date}).\n"
+                    f"Open app: {app_link}"
+                ),
             )
     else:
         tg_norm = normalize_telegram_username(telegram_username or "")

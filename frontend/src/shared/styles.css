@@ -1272,22 +1272,13 @@ button.ghost {
   }
 
   .about-top-row {
-    display: flex;
-    gap: 0.6rem;
-  }
-
-  .about-top-row > label {
-    flex: 1 1 0;
-    min-width: 0;
-    overflow: hidden;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
   }
 
   .about-top-row input {
     width: 100%;
-    max-width: 100%;
-    min-width: 0;
     height: 48px;
-    box-sizing: border-box;
   }
 
   .about-top-row input[type="date"] {
