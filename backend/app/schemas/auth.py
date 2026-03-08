@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -82,7 +83,7 @@ SurfLevel = Literal["beginner", "beginner_plus", "intermediate", "advanced", "pr
 class ProfileRead(BaseModel):
     username: str
     telegram_username: str | None = None
-    age: int | None = None
+    birth_date: date | None = None
     city: str | None = None
     surfboard: str | None = None
     surf_level: SurfLevel | None = None
@@ -94,7 +95,7 @@ class ProfileRead(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    age: int | None = Field(default=None, ge=8, le=90)
+    birth_date: date | None = None
     city: str | None = Field(default=None, min_length=2, max_length=120)
     surfboard: str | None = Field(default=None, min_length=2, max_length=140)
     surf_level: SurfLevel | None = None

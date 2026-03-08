@@ -10,6 +10,8 @@ from app.core.surf_spots import SURF_SPOT_NAMES
 from app.models.surf import (
     FriendRequest,
     FriendRequestStatus,
+    GroupMemberInvite,
+    GroupMemberInviteStatus,
     Friendship,
     GroupInvite,
     GroupMembership,
@@ -76,6 +78,7 @@ def create_inbox_item(
     body: str,
     related_invite_id: int | None = None,
     related_friend_request_id: int | None = None,
+    related_group_member_invite_id: int | None = None,
     related_group_id: int | None = None,
     related_session_id: int | None = None,
     related_user_id: int | None = None,
@@ -87,6 +90,7 @@ def create_inbox_item(
         body=body,
         related_invite_id=related_invite_id,
         related_friend_request_id=related_friend_request_id,
+        related_group_member_invite_id=related_group_member_invite_id,
         related_group_id=related_group_id,
         related_session_id=related_session_id,
         related_user_id=related_user_id,
@@ -215,9 +219,9 @@ def _notify_friend_request(
 ) -> None:
     title = "Friend request reminder" if is_resend else "New friend request"
     body = (
-        f"@{from_user.username} sent your friend request again."
+        f"{from_user.username} sent your friend request again."
         if is_resend
-        else f"@{from_user.username} sent you a friend request."
+        else f"{from_user.username} sent you a friend request."
     )
     create_inbox_item(
         db,
@@ -233,9 +237,9 @@ def _notify_friend_request(
         send_message(
             chat_id,
             (
-                f"@{from_user.username} sent your friend request again in SurfCrew Planner."
+                f"{from_user.username} sent your friend request again in SurfCrew Planner."
                 if is_resend
-                else f"@{from_user.username} sent you a friend request in SurfCrew Planner. Open app inbox to accept."
+                else f"{from_user.username} sent you a friend request in SurfCrew Planner. Open app inbox to accept."
             ),
         )
 
@@ -348,7 +352,7 @@ def accept_friend_request(db: Session, request_id: int, current_user: User) -> F
         request.from_user_id,
         "friend_request_accepted",
         "Friend request accepted",
-        f"@{current_user.username} accepted your friend request.",
+        f"{current_user.username} accepted your friend request.",
         related_friend_request_id=request.id,
         related_user_id=current_user.id,
     )
@@ -358,7 +362,7 @@ def accept_friend_request(db: Session, request_id: int, current_user: User) -> F
         if chat_id:
             send_message(
                 chat_id,
-                f"@{current_user.username} accepted your friend request in SurfCrew Planner.",
+                f"{current_user.username} accepted your friend request in SurfCrew Planner.",
             )
     db.commit()
     db.refresh(request)
@@ -382,7 +386,7 @@ def decline_friend_request(db: Session, request_id: int, current_user: User) -> 
         request.from_user_id,
         "friend_request_declined",
         "Friend request declined",
-        f"@{current_user.username} declined your friend request.",
+        f"{current_user.username} declined your friend request.",
         related_friend_request_id=request.id,
         related_user_id=current_user.id,
     )
@@ -392,7 +396,7 @@ def decline_friend_request(db: Session, request_id: int, current_user: User) -> 
         if chat_id:
             send_message(
                 chat_id,
-                f"@{current_user.username} declined your friend request in SurfCrew Planner.",
+                f"{current_user.username} declined your friend request in SurfCrew Planner.",
             )
 
     db.execute(
@@ -413,8 +417,8 @@ def get_group_detail(
     db: Session,
     group_id: int,
     current_user: User,
-) -> tuple[SurfGroup, list[tuple[User, GroupMembership]], list[SurfSession]]:
-    require_membership(db, group_id, current_user)
+) -> tuple[SurfGroup, GroupMembership, list[tuple[User, GroupMembership]], list[SurfSession]]:
+    current_membership = require_membership(db, group_id, current_user)
     group = db.get(SurfGroup, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -429,7 +433,204 @@ def get_group_detail(
         .where(SurfSession.group_id == group_id)
         .order_by(SurfSession.session_date.desc(), SurfSession.meeting_time.desc(), SurfSession.id.desc())
     )
-    return group, list(db.execute(members_stmt).all()), list(db.scalars(sessions_stmt).all())
+    return group, current_membership, list(db.execute(members_stmt).all()), list(db.scalars(sessions_stmt).all())
+
+
+def update_group(db: Session, group_id: int, current_user: User, *, name: str, description: str) -> SurfGroup:
+    require_admin(db, group_id, current_user)
+    group = db.get(SurfGroup, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    group.name = name.strip()
+    group.description = (description or "").strip()
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+def remove_group_member(db: Session, group_id: int, current_user: User, username: str) -> None:
+    admin_membership = require_admin(db, group_id, current_user)
+    if admin_membership.user_id is None:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    target = db.scalar(select(User).where(User.username == username.strip().lower()))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself")
+
+    membership = _get_membership(db, group_id, target.id)
+    if not membership:
+        raise HTTPException(status_code=404, detail="User is not a crew member")
+
+    db.delete(membership)
+    db.execute(
+        update(GroupMemberInvite)
+        .where(
+            GroupMemberInvite.group_id == group_id,
+            GroupMemberInvite.invited_user_id == target.id,
+            GroupMemberInvite.status == GroupMemberInviteStatus.pending,
+        )
+        .values(status=GroupMemberInviteStatus.declined, acted_at=_now())
+    )
+    db.commit()
+
+
+def create_group_member_invite(db: Session, group_id: int, current_user: User, username: str) -> GroupMemberInvite:
+    require_admin(db, group_id, current_user)
+    group = db.get(SurfGroup, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    target = db.scalar(select(User).where(User.username == username.strip().lower()))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot invite yourself")
+    if _get_membership(db, group_id, target.id):
+        raise HTTPException(status_code=409, detail="User is already in this crew")
+
+    existing = db.scalar(
+        select(GroupMemberInvite).where(
+            GroupMemberInvite.group_id == group_id,
+            GroupMemberInvite.invited_user_id == target.id,
+        )
+    )
+    if existing:
+        if existing.status == GroupMemberInviteStatus.pending:
+            invite = existing
+        else:
+            existing.status = GroupMemberInviteStatus.pending
+            existing.acted_at = None
+            db.add(existing)
+            db.flush()
+            invite = existing
+    else:
+        invite = GroupMemberInvite(
+            group_id=group_id,
+            invited_by_user_id=current_user.id,
+            invited_user_id=target.id,
+            status=GroupMemberInviteStatus.pending,
+        )
+        db.add(invite)
+        db.flush()
+
+    create_inbox_item(
+        db,
+        target.id,
+        "crew_invite",
+        f"Crew invite: {group.name}",
+        f"{current_user.username} invited you to join crew {group.name}.",
+        related_group_member_invite_id=invite.id,
+        related_group_id=group.id,
+        related_user_id=current_user.id,
+    )
+    chat_id = _resolve_chat_id(db, target)
+    if chat_id:
+        send_message(
+            chat_id,
+            f"{current_user.username} invited you to join crew {group.name} in SurfCrew Planner. Open app inbox to accept.",
+        )
+
+    db.commit()
+    db.refresh(invite)
+    return invite
+
+
+def accept_group_member_invite(db: Session, invite_id: int, current_user: User) -> GroupMemberInvite:
+    invite = db.get(GroupMemberInvite, invite_id)
+    if not invite or invite.invited_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Crew invite not found")
+    if invite.status == GroupMemberInviteStatus.accepted:
+        return invite
+    if invite.status != GroupMemberInviteStatus.pending:
+        raise HTTPException(status_code=400, detail="Crew invite is not pending")
+
+    group = db.get(SurfGroup, invite.group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    _ensure_membership(db, invite.group_id, current_user.id)
+    invite.status = GroupMemberInviteStatus.accepted
+    invite.acted_at = _now()
+    db.add(invite)
+
+    inviter = db.get(User, invite.invited_by_user_id)
+    if inviter:
+        create_inbox_item(
+            db,
+            inviter.id,
+            "crew_invite_accepted",
+            "Crew invite accepted",
+            f"{current_user.username} joined crew {group.name}.",
+            related_group_member_invite_id=invite.id,
+            related_group_id=group.id,
+            related_user_id=current_user.id,
+        )
+        inviter_chat_id = _resolve_chat_id(db, inviter)
+        if inviter_chat_id:
+            send_message(inviter_chat_id, f"{current_user.username} accepted your crew invite to {group.name}.")
+
+    db.execute(
+        update(InboxItem)
+        .where(
+            InboxItem.user_id == current_user.id,
+            InboxItem.related_group_member_invite_id == invite.id,
+            InboxItem.item_type == "crew_invite",
+        )
+        .values(is_read=True)
+    )
+    db.commit()
+    db.refresh(invite)
+    return invite
+
+
+def decline_group_member_invite(db: Session, invite_id: int, current_user: User) -> GroupMemberInvite:
+    invite = db.get(GroupMemberInvite, invite_id)
+    if not invite or invite.invited_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Crew invite not found")
+    if invite.status == GroupMemberInviteStatus.declined:
+        return invite
+    if invite.status != GroupMemberInviteStatus.pending:
+        raise HTTPException(status_code=400, detail="Crew invite is not pending")
+
+    group = db.get(SurfGroup, invite.group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    invite.status = GroupMemberInviteStatus.declined
+    invite.acted_at = _now()
+    db.add(invite)
+
+    inviter = db.get(User, invite.invited_by_user_id)
+    if inviter:
+        create_inbox_item(
+            db,
+            inviter.id,
+            "crew_invite_declined",
+            "Crew invite declined",
+            f"{current_user.username} declined your crew invite to {group.name}.",
+            related_group_member_invite_id=invite.id,
+            related_group_id=group.id,
+            related_user_id=current_user.id,
+        )
+        inviter_chat_id = _resolve_chat_id(db, inviter)
+        if inviter_chat_id:
+            send_message(inviter_chat_id, f"{current_user.username} declined your crew invite to {group.name}.")
+
+    db.execute(
+        update(InboxItem)
+        .where(
+            InboxItem.user_id == current_user.id,
+            InboxItem.related_group_member_invite_id == invite.id,
+            InboxItem.item_type == "crew_invite",
+        )
+        .values(is_read=True)
+    )
+    db.commit()
+    db.refresh(invite)
+    return invite
 
 
 def create_invite(db: Session, group_id: int, user: User) -> GroupInvite:
@@ -587,7 +788,7 @@ def create_session_invite(
             target.id,
             "session_invite",
             f"Surf invite: {session.spot_name} on {session.session_date}",
-            f"@{inviter.username} invited you to a surf session on {session.session_date} at {session.spot_name}.",
+            f"{inviter.username} invited you to a surf session on {session.session_date} at {session.spot_name}.",
             related_invite_id=invite.id,
             related_group_id=session.group_id,
             related_session_id=session.id,
@@ -596,7 +797,7 @@ def create_session_invite(
         if target.telegram_chat_id:
             send_message(
                 target.telegram_chat_id,
-                f"@{inviter.username} invited you to surf at {session.spot_name} ({session.session_date}). Open app inbox to accept.",
+                f"{inviter.username} invited you to surf at {session.spot_name} ({session.session_date}). Open app inbox to accept.",
             )
     else:
         tg_norm = normalize_telegram_username(telegram_username or "")
@@ -656,14 +857,14 @@ def accept_session_invite(db: Session, invite_id: int, user: User) -> SessionInv
             inviter.id,
             "invite_accepted",
             "Invite accepted",
-            f"@{user.username} joined your session invite.",
+            f"{user.username} joined your session invite.",
             related_invite_id=invite.id,
             related_group_id=session.group_id,
             related_session_id=session.id,
             related_user_id=user.id,
         )
         if inviter.telegram_chat_id:
-            send_message(inviter.telegram_chat_id, f"@{user.username} accepted your surf invite.")
+            send_message(inviter.telegram_chat_id, f"{user.username} accepted your surf invite.")
 
     db.add(invite)
     db.execute(
@@ -707,7 +908,7 @@ def decline_session_invite(db: Session, invite_id: int, user: User) -> SessionIn
             inviter.id,
             "invite_declined",
             "Invite declined",
-            f"@{user.username} declined your surf invite.",
+            f"{user.username} declined your surf invite.",
             related_invite_id=invite.id,
             related_group_id=session.group_id,
             related_session_id=session.id,
@@ -715,7 +916,7 @@ def decline_session_invite(db: Session, invite_id: int, user: User) -> SessionIn
         )
         inviter_chat_id = _resolve_chat_id(db, inviter)
         if inviter_chat_id:
-            send_message(inviter_chat_id, f"@{user.username} declined your surf invite.")
+            send_message(inviter_chat_id, f"{user.username} declined your surf invite.")
 
     db.execute(
         update(InboxItem)
@@ -779,7 +980,7 @@ def finalize_registration_invites(db: Session, user: User) -> None:
                 inviter.id,
                 "invite_accepted",
                 "Invite accepted",
-                f"@{user.username} completed registration and joined your session invite.",
+                f"{user.username} completed registration and joined your session invite.",
                 related_invite_id=invite.id,
                 related_group_id=session.group_id,
                 related_session_id=session.id,
@@ -788,7 +989,7 @@ def finalize_registration_invites(db: Session, user: User) -> None:
             if inviter.telegram_chat_id:
                 send_message(
                     inviter.telegram_chat_id,
-                    f"@{user.username} completed registration and joined your surf invite.",
+                    f"{user.username} completed registration and joined your surf invite.",
                 )
 
     db.commit()
@@ -843,7 +1044,7 @@ def set_rsvp(db: Session, session_id: int, user: User, status_value, transport_n
                     inviter.id,
                     "invite_accepted",
                     "Invite accepted",
-                    f"@{user.username} joined your session invite.",
+                    f"{user.username} joined your session invite.",
                     related_invite_id=invite.id,
                     related_group_id=session.group_id,
                     related_session_id=session.id,
@@ -853,7 +1054,7 @@ def set_rsvp(db: Session, session_id: int, user: User, status_value, transport_n
                 if inviter_chat_id:
                     send_message(
                         inviter_chat_id,
-                        f"@{user.username} accepted your surf invite.",
+                        f"{user.username} accepted your surf invite.",
                     )
 
     db.commit()

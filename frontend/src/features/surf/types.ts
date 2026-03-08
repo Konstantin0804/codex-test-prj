@@ -106,6 +106,7 @@ export interface InboxItem {
   is_read: boolean;
   related_invite_id: number | null;
   related_friend_request_id: number | null;
+  related_group_member_invite_id: number | null;
   related_group_id: number | null;
   related_session_id: number | null;
   related_user_id: number | null;

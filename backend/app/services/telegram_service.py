@@ -78,7 +78,7 @@ def send_verification_message(user: User) -> bool:
         user.telegram_chat_id,
         (
             "SurfCrew Planner registration pending.\n"
-            f"Account: @{user.username}\n"
+            f"Account: {user.username}\n"
             f"Telegram: @{user.telegram_username}\n\n"
             "Press Confirm to finish registration."
         ),

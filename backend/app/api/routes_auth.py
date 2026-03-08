@@ -222,7 +222,7 @@ def get_profile(current_user: User = Depends(get_current_user)) -> ProfileRead:
     return ProfileRead(
         username=current_user.username,
         telegram_username=current_user.telegram_username,
-        age=current_user.age,
+        birth_date=current_user.birth_date,
         city=current_user.city,
         surfboard=current_user.surfboard,
         surf_level=current_user.surf_level,
@@ -246,7 +246,7 @@ def get_profile_by_username(
     return ProfileRead(
         username=user.username,
         telegram_username=user.telegram_username,
-        age=user.age,
+        birth_date=user.birth_date,
         city=user.city,
         surfboard=user.surfboard,
         surf_level=user.surf_level,
@@ -267,7 +267,7 @@ def patch_profile(
     updated = update_profile(
         db,
         current_user,
-        age=payload.age,
+        birth_date=payload.birth_date,
         city=payload.city,
         surfboard=payload.surfboard,
         surf_level=payload.surf_level,
@@ -279,7 +279,7 @@ def patch_profile(
     return ProfileRead(
         username=updated.username,
         telegram_username=updated.telegram_username,
-        age=updated.age,
+        birth_date=updated.birth_date,
         city=updated.city,
         surfboard=updated.surfboard,
         surf_level=updated.surf_level,
@@ -307,7 +307,7 @@ async def post_profile_avatar(
     return ProfileRead(
         username=updated.username,
         telegram_username=updated.telegram_username,
-        age=updated.age,
+        birth_date=updated.birth_date,
         city=updated.city,
         surfboard=updated.surfboard,
         surf_level=updated.surf_level,

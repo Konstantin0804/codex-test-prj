@@ -4,7 +4,14 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db_dep
-from app.models.surf import FriendRequest, FriendRequestStatus, SessionInvite, SessionInviteStatus
+from app.models.surf import (
+    FriendRequest,
+    FriendRequestStatus,
+    GroupMemberInvite,
+    GroupMemberInviteStatus,
+    SessionInvite,
+    SessionInviteStatus,
+)
 from app.models.user import User
 from app.schemas.surf import (
     FriendRequestCreate,
@@ -12,9 +19,12 @@ from app.schemas.surf import (
     FriendRead,
     GroupDetailRead,
     GroupMemberRead,
+    GroupMemberInviteCreate,
+    GroupMemberInviteRead,
     GroupSessionSummaryRead,
     GroupCreate,
     GroupRead,
+    GroupUpdate,
     InboxItemRead,
     InviteRead,
     JoinInvitePayload,
@@ -37,10 +47,12 @@ from app.schemas.surf import (
 from app.services.forecast_service import get_open_meteo_forecast
 from app.services.surf_service import (
     accept_friend_request,
+    accept_group_member_invite,
     complete_session,
     accept_session_invite,
     create_friend_request,
     create_group,
+    create_group_member_invite,
     create_invite,
     create_report,
     create_session_invite,
@@ -61,8 +73,11 @@ from app.services.surf_service import (
     list_sessions,
     mark_inbox_read,
     my_rsvp_map,
+    remove_group_member,
     resend_friend_request,
+    update_group,
     decline_friend_request,
+    decline_group_member_invite,
     decline_session_invite,
     session_rating_summary_map,
     add_session_photo,
@@ -133,6 +148,16 @@ def _resolve_inbox_action_state(db: Session, item, current_user: User) -> tuple[
             return "declined", False
         return status_value, False
 
+    if item.related_group_member_invite_id:
+        invite = db.get(GroupMemberInvite, item.related_group_member_invite_id)
+        if not invite:
+            return "none", False
+        if invite.invited_user_id != current_user.id:
+            return invite.status.value, False
+        if invite.status == GroupMemberInviteStatus.pending:
+            return "pending", True
+        return invite.status.value, False
+
     return "none", False
 
 
@@ -149,6 +174,95 @@ def post_group(
         description=group.description,
         role="admin",
         created_at=group.created_at,
+    )
+
+
+@router.patch("/groups/{group_id}", response_model=GroupRead)
+def patch_group(
+    group_id: int,
+    payload: GroupUpdate,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> GroupRead:
+    group = update_group(db, group_id, current_user, name=payload.name, description=payload.description)
+    return GroupRead(
+        id=group.id,
+        name=group.name,
+        description=group.description,
+        role="admin",
+        created_at=group.created_at,
+    )
+
+
+@router.delete("/groups/{group_id}/members/{username}")
+def delete_group_member(
+    group_id: int,
+    username: str,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    remove_group_member(db, group_id, current_user, username)
+    return {"status": "ok"}
+
+
+@router.post("/groups/{group_id}/member-invites", response_model=GroupMemberInviteRead)
+def post_group_member_invite(
+    group_id: int,
+    payload: GroupMemberInviteCreate,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> GroupMemberInviteRead:
+    invite = create_group_member_invite(db, group_id, current_user, payload.username)
+    invited_user = db.get(User, invite.invited_user_id)
+    invited_by = db.get(User, invite.invited_by_user_id)
+    return GroupMemberInviteRead(
+        id=invite.id,
+        group_id=invite.group_id,
+        invited_username=invited_user.username if invited_user else "",
+        invited_by_username=invited_by.username if invited_by else "",
+        status=invite.status,
+        created_at=invite.created_at,
+        acted_at=invite.acted_at,
+    )
+
+
+@router.post("/member-invites/{invite_id}/accept", response_model=GroupMemberInviteRead)
+def post_accept_group_member_invite(
+    invite_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> GroupMemberInviteRead:
+    invite = accept_group_member_invite(db, invite_id, current_user)
+    invited_user = db.get(User, invite.invited_user_id)
+    invited_by = db.get(User, invite.invited_by_user_id)
+    return GroupMemberInviteRead(
+        id=invite.id,
+        group_id=invite.group_id,
+        invited_username=invited_user.username if invited_user else "",
+        invited_by_username=invited_by.username if invited_by else "",
+        status=invite.status,
+        created_at=invite.created_at,
+        acted_at=invite.acted_at,
+    )
+
+
+@router.post("/member-invites/{invite_id}/decline", response_model=GroupMemberInviteRead)
+def post_decline_group_member_invite(
+    invite_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> GroupMemberInviteRead:
+    invite = decline_group_member_invite(db, invite_id, current_user)
+    invited_user = db.get(User, invite.invited_user_id)
+    invited_by = db.get(User, invite.invited_by_user_id)
+    return GroupMemberInviteRead(
+        id=invite.id,
+        group_id=invite.group_id,
+        invited_username=invited_user.username if invited_user else "",
+        invited_by_username=invited_by.username if invited_by else "",
+        status=invite.status,
+        created_at=invite.created_at,
+        acted_at=invite.acted_at,
     )
 
 
@@ -333,12 +447,13 @@ def get_group_detail_route(
     db: Session = Depends(get_db_dep),
     current_user: User = Depends(get_current_user),
 ) -> GroupDetailRead:
-    group, members, sessions = get_group_detail(db, group_id, current_user)
+    group, current_membership, members, sessions = get_group_detail(db, group_id, current_user)
     ratings = session_rating_summary_map(db, [item.id for item in sessions])
     return GroupDetailRead(
         id=group.id,
         name=group.name,
         description=group.description,
+        current_user_role=current_membership.role,
         members=[GroupMemberRead(username=user.username, role=membership.role) for user, membership in members],
         sessions=[
             GroupSessionSummaryRead(
@@ -778,6 +893,7 @@ def get_inbox(
                 is_read=item.is_read,
                 related_invite_id=item.related_invite_id,
                 related_friend_request_id=item.related_friend_request_id,
+                related_group_member_invite_id=item.related_group_member_invite_id,
                 related_group_id=item.related_group_id,
                 related_session_id=item.related_session_id,
                 related_user_id=item.related_user_id,
@@ -810,6 +926,7 @@ def patch_inbox_read(
         is_read=item.is_read,
         related_invite_id=item.related_invite_id,
         related_friend_request_id=item.related_friend_request_id,
+        related_group_member_invite_id=item.related_group_member_invite_id,
         related_group_id=item.related_group_id,
         related_session_id=item.related_session_id,
         related_user_id=item.related_user_id,

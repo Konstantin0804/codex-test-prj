@@ -1,6 +1,6 @@
 import secrets
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, update
@@ -256,7 +256,7 @@ def request_password_reset(
         int(chat_id),
         (
             "SurfCrew Planner password reset.\n"
-            f"@{user.username}, open this link to set a new password:\n{reset_link}\n\n"
+            f"{user.username}, open this link to set a new password:\n{reset_link}\n\n"
             "This link expires in 30 minutes."
         ),
     )
@@ -307,7 +307,7 @@ def update_profile(
     db: Session,
     user: User,
     *,
-    age: int | None,
+    birth_date: date | None,
     city: str | None,
     surfboard: str | None,
     surf_level: str | None,
@@ -316,8 +316,8 @@ def update_profile(
     phone_number: str | None,
     favorite_spots: list[str] | None,
 ) -> User:
-    if age is not None:
-        user.age = age
+    if birth_date is not None:
+        user.birth_date = birth_date
     if city is not None:
         user.city = city.strip() or None
     if surfboard is not None:

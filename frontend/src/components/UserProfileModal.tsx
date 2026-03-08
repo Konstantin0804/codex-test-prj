@@ -4,7 +4,7 @@ import { api } from "../shared/api";
 interface Profile {
   username: string;
   telegram_username: string | null;
-  age: number | null;
+  birth_date: string | null;
   city: string | null;
   surfboard: string | null;
   surf_level: string | null;
@@ -17,12 +17,17 @@ interface Profile {
 
 interface Props {
   username: string;
+  adminCrews: { id: number; name: string }[];
+  onInviteToCrew: (groupId: number, username: string) => Promise<void>;
   onClose: () => void;
 }
 
-export function UserProfileModal({ username, onClose }: Props) {
+export function UserProfileModal({ username, adminCrews, onInviteToCrew, onClose }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCrewId, setSelectedCrewId] = useState<number | null>(null);
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -57,7 +62,7 @@ export function UserProfileModal({ username, onClose }: Props) {
                 ) : null}
               </div>
               <p className="tiny">Telegram: {profile.telegram_username ? `@${profile.telegram_username}` : "-"}</p>
-              <p className="tiny">Age: {profile.age ?? "-"}</p>
+              <p className="tiny">Birth date: {profile.birth_date ?? "-"}</p>
               <p className="tiny">City: {profile.city ?? "-"}</p>
               <p className="tiny">Surfboard: {profile.surfboard ?? "-"}</p>
               <p className="tiny">Level: {profile.surf_level ?? "-"}</p>
@@ -67,6 +72,47 @@ export function UserProfileModal({ username, onClose }: Props) {
               <p className="tiny">
                 Favorite spots: {profile.favorite_spots.length ? profile.favorite_spots.join(", ") : "-"}
               </p>
+              {adminCrews.length > 0 ? (
+                <div className="invite-box">
+                  <p className="tiny">Invite to crew</p>
+                  <div className="invite-row">
+                    <select
+                      value={selectedCrewId ?? ""}
+                      onChange={(event) => setSelectedCrewId(event.target.value ? Number(event.target.value) : null)}
+                    >
+                      <option value="">Select crew</option>
+                      {adminCrews.map((crew) => (
+                        <option key={crew.id} value={crew.id}>
+                          {crew.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="ghost"
+                      type="button"
+                      disabled={!selectedCrewId || inviting}
+                      onClick={async () => {
+                        if (!selectedCrewId) {
+                          return;
+                        }
+                        setInviting(true);
+                        setInviteStatus(null);
+                        try {
+                          await onInviteToCrew(selectedCrewId, profile.username);
+                          setInviteStatus("Crew invite sent");
+                        } catch (err: any) {
+                          setInviteStatus(err?.response?.data?.detail ?? "Failed to send crew invite");
+                        } finally {
+                          setInviting(false);
+                        }
+                      }}
+                    >
+                      {inviting ? "Sending..." : "Send invite"}
+                    </button>
+                  </div>
+                  {inviteStatus ? <p className="tiny">{inviteStatus}</p> : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>

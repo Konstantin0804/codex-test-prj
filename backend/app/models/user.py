@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -21,6 +21,7 @@ class User(Base):
     password_reset_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     nickname: Mapped[str | None] = mapped_column(String(80), nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     surfboard: Mapped[str | None] = mapped_column(String(140), nullable=True)
     surf_level: Mapped[str | None] = mapped_column(String(24), nullable=True)

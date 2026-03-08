@@ -12,7 +12,7 @@ type SurfLevel = "beginner" | "beginner_plus" | "intermediate" | "advanced" | "p
 interface Profile {
   username: string;
   telegram_username: string | null;
-  age: number | null;
+  birth_date: string | null;
   city: string | null;
   surfboard: string | null;
   surf_level: SurfLevel | null;
@@ -59,7 +59,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
 
   const [username, setUsername] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
-  const [age, setAge] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [city, setCity] = useState("");
   const [surfboard, setSurfboard] = useState("");
   const [surfLevel, setSurfLevel] = useState<SurfLevel | "">("");
@@ -83,7 +83,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
         const profile = profileRes.data;
         setUsername(profile.username);
         setTelegramUsername(profile.telegram_username ?? "");
-        setAge(profile.age ? String(profile.age) : "");
+        setBirthDate(profile.birth_date ?? "");
         setCity(profile.city ?? "");
         setSurfboard(profile.surfboard ?? "");
         setSurfLevel(profile.surf_level ?? "");
@@ -103,8 +103,6 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
     void load();
   }, [onAvatarChange]);
 
-  const ageNum = Number(age);
-  const validAge = age.trim().length === 0 || (Number.isFinite(ageNum) && ageNum >= 8 && ageNum <= 90);
   const validCity = city.trim().length === 0 || city.trim().length >= 2;
   const validBoard = surfboard.trim().length === 0 || surfboard.trim().length >= 2;
   const phoneDigits = phoneNumber.replace(/\D/g, "");
@@ -113,7 +111,7 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
     (phoneNumber.trim().startsWith("+") && phoneDigits.length >= 6 && phoneDigits.length <= 15);
   const validFavoriteSpots = favoriteSpots.length <= 3;
   const validCarSeats = carSeats >= 0 && carSeats <= 6;
-  const canSubmit = validAge && validCity && validBoard && validPhone && validFavoriteSpots && validCarSeats;
+  const canSubmit = validCity && validBoard && validPhone && validFavoriteSpots && validCarSeats;
 
   const normalizedPhonePreview = useMemo(() => sanitizeInternationalPhoneInput(phoneNumber), [phoneNumber]);
   const filteredSpots = useMemo(() => {
@@ -174,8 +172,8 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
       const payload: Record<string, unknown> = {
         favorite_spots: favoriteSpots
       };
-      if (age.trim().length > 0) {
-        payload.age = ageNum;
+      if (birthDate.trim().length > 0) {
+        payload.birth_date = birthDate;
       }
       if (city.trim().length > 0) {
         payload.city = city.trim();
@@ -313,13 +311,11 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
 
         <div className="row-2 about-top-row">
           <label>
-            Age
+            Birth date
             <input
-              type="number"
-              min={8}
-              max={90}
-              value={age}
-              onChange={(event) => setAge(event.target.value)}
+              type="date"
+              value={birthDate}
+              onChange={(event) => setBirthDate(event.target.value)}
             />
           </label>
           <label>
@@ -374,7 +370,6 @@ export function ProfilePanel({ onClose, onAvatarChange }: Props) {
             </select>
           </label>
         </div>
-        {!validAge && age.length > 0 ? <p className="tiny error-text">Age: 8 to 90.</p> : null}
         {!validCity && city.trim().length > 0 ? (
           <p className="tiny error-text">City: minimum 2 characters.</p>
         ) : null}

@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.surf import (
     FriendRequestStatus,
+    GroupMemberInviteStatus,
     GroupRole,
     InviteStatus,
     RSVPStatus,
@@ -52,6 +53,20 @@ class FriendRequestRead(BaseModel):
     created_at: datetime
 
 
+class GroupMemberInviteCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+
+
+class GroupMemberInviteRead(BaseModel):
+    id: int
+    group_id: int
+    invited_username: str
+    invited_by_username: str
+    status: GroupMemberInviteStatus
+    created_at: datetime
+    acted_at: datetime | None = None
+
+
 class GroupMemberRead(BaseModel):
     username: str
     role: GroupRole
@@ -68,8 +83,14 @@ class GroupDetailRead(BaseModel):
     id: int
     name: str
     description: str
+    current_user_role: GroupRole
     members: list[GroupMemberRead]
     sessions: list[GroupSessionSummaryRead] = Field(default_factory=list)
+
+
+class GroupUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    description: str = ""
 
 
 class InviteRead(BaseModel):
@@ -229,6 +250,7 @@ class InboxItemRead(BaseModel):
     is_read: bool
     related_invite_id: int | None
     related_friend_request_id: int | None = None
+    related_group_member_invite_id: int | None = None
     related_group_id: int | None = None
     related_session_id: int | None = None
     related_user_id: int | None = None

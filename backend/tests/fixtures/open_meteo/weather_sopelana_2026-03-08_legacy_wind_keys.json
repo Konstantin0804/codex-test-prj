@@ -5,9 +5,9 @@
       "2026-03-08T06:00",
       "2026-03-08T07:00"
     ],
-    "wind_speed_10m": [null, null, null],
-    "wind_direction_10m": [null, null, null],
-    "windspeed_10m": [6.0, 6.4, 6.2],
-    "winddirection_10m": [140, 133, 128]
+    "wind_speed_10m": [6.0, 6.4, 6.2],
+    "wind_direction_10m": [140, 133, 128],
+    "windspeed_10m": [null, null, null],
+    "winddirection_10m": [null, null, null]
   }
 }

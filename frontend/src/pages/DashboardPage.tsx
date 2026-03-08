@@ -271,6 +271,20 @@ export function DashboardPage() {
   const handleMarkInboxRead = async (itemId: number) => {
     await dispatch(markInboxRead(itemId));
   };
+  const handleInviteToCrew = async (groupId: number, targetUsername: string) => {
+    await api.post(`/surf/groups/${groupId}/member-invites`, { username: targetUsername });
+    await dispatch(fetchInbox());
+  };
+  const handleAcceptCrewInvite = async (inviteId: number) => {
+    await api.post(`/surf/member-invites/${inviteId}/accept`);
+    await dispatch(fetchGroups());
+    await dispatch(fetchFriends());
+    await dispatch(fetchInbox());
+  };
+  const handleDeclineCrewInvite = async (inviteId: number) => {
+    await api.post(`/surf/member-invites/${inviteId}/decline`);
+    await dispatch(fetchInbox());
+  };
 
   const unreadInboxCount = inbox.filter((item) => !item.is_read).length;
   const unreadFriendsCount = inbox.filter(
@@ -320,6 +334,13 @@ export function DashboardPage() {
       {crewModalGroupId ? (
         <CrewDetailModal
           groupId={crewModalGroupId}
+          currentUsername={username ?? ""}
+          friends={friends}
+          onRefreshData={async () => {
+            await dispatch(fetchGroups());
+            await dispatch(fetchFriends());
+          }}
+          onInviteToCrew={handleInviteToCrew}
           onClose={() => setCrewModalGroupId(null)}
           onOpenUser={(usernameValue) => setProfileModalUsername(usernameValue)}
           onOpenSession={(sessionId) => setSessionDetailId(sessionId)}
@@ -329,7 +350,12 @@ export function DashboardPage() {
         <SessionDetailModal sessionId={sessionDetailId} onClose={() => setSessionDetailId(null)} />
       ) : null}
       {profileModalUsername ? (
-        <UserProfileModal username={profileModalUsername} onClose={() => setProfileModalUsername(null)} />
+        <UserProfileModal
+          username={profileModalUsername}
+          adminCrews={groups.filter((group) => group.role === "admin").map((group) => ({ id: group.id, name: group.name }))}
+          onInviteToCrew={handleInviteToCrew}
+          onClose={() => setProfileModalUsername(null)}
+        />
       ) : null}
       {inboxDetailsOpen ? (
         <section className="inbox-page-wrap">
@@ -345,6 +371,8 @@ export function DashboardPage() {
             }}
             onAcceptInvite={handleAcceptInvite}
             onDeclineInvite={handleDeclineInvite}
+            onAcceptCrewInvite={handleAcceptCrewInvite}
+            onDeclineCrewInvite={handleDeclineCrewInvite}
             onAcceptFriendRequest={handleAcceptFriendRequest}
             onDeclineFriendRequest={handleDeclineFriendRequest}
             onMarkRead={handleMarkInboxRead}
@@ -387,6 +415,8 @@ export function DashboardPage() {
               }}
               onAcceptInvite={handleAcceptInvite}
               onDeclineInvite={handleDeclineInvite}
+              onAcceptCrewInvite={handleAcceptCrewInvite}
+              onDeclineCrewInvite={handleDeclineCrewInvite}
               onAcceptFriendRequest={handleAcceptFriendRequest}
               onDeclineFriendRequest={handleDeclineFriendRequest}
               onMarkRead={handleMarkInboxRead}

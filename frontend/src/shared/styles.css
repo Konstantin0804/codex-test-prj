@@ -21,6 +21,7 @@ body {
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
+  min-height: 100dvh;
 }
 
 .layout {
@@ -961,7 +962,9 @@ button.ghost {
 }
 
 .auth-layout {
-  min-height: 80vh;
+  min-height: 100dvh;
+  max-width: none;
+  width: 100%;
   display: grid;
   place-items: center;
 }

@@ -199,7 +199,7 @@ export function AuthPanel() {
   return (
     <main className="layout auth-layout">
       <section className="card auth-card">
-        <p className="eyebrow">Surfrew planner</p>
+        <p className="eyebrow">SurfCrew Planner</p>
         <h1>
           {mode === "login"
             ? "Sign In"

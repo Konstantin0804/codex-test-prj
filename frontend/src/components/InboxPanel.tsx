@@ -9,6 +9,8 @@ interface Props {
   onRefresh: () => Promise<void>;
   onAcceptInvite: (inviteId: number) => Promise<void>;
   onDeclineInvite: (inviteId: number) => Promise<void>;
+  onAcceptCrewInvite: (inviteId: number) => Promise<void>;
+  onDeclineCrewInvite: (inviteId: number) => Promise<void>;
   onAcceptFriendRequest: (requestId: number) => Promise<void>;
   onDeclineFriendRequest: (requestId: number) => Promise<void>;
   onMarkRead: (itemId: number) => Promise<void>;
@@ -29,6 +31,8 @@ export function InboxPanel({
   onRefresh,
   onAcceptInvite,
   onDeclineInvite,
+  onAcceptCrewInvite,
+  onDeclineCrewInvite,
   onAcceptFriendRequest,
   onDeclineFriendRequest,
   onMarkRead,
@@ -157,6 +161,19 @@ export function InboxPanel({
                     {decliningInviteIds.includes(item.related_invite_id as number)
                       ? "Declining..."
                       : "Decline invite"}
+                  </button>
+                </>
+              ) : null}
+              {item.item_type === "crew_invite" && item.related_group_member_invite_id && item.action_required ? (
+                <>
+                  <button onClick={() => onAcceptCrewInvite(item.related_group_member_invite_id as number)}>
+                    Accept invite
+                  </button>
+                  <button
+                    className="ghost"
+                    onClick={() => onDeclineCrewInvite(item.related_group_member_invite_id as number)}
+                  >
+                    Decline invite
                   </button>
                 </>
               ) : null}

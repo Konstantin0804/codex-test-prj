@@ -156,8 +156,11 @@ export function SurfGroupPanel({
                 type="button"
                 className={`group-item ${selectedGroupId === group.id ? "active" : ""}`}
                 onClick={() => {
+                  if (selectedGroupId === group.id) {
+                    onOpenGroupDetail(group.id);
+                    return;
+                  }
                   onSelectGroup(group.id);
-                  onOpenGroupDetail(group.id);
                 }}
               >
                 <strong>{group.name}</strong>
@@ -169,13 +172,18 @@ export function SurfGroupPanel({
           {selected ? (
             <div className="invite-box">
               <button
-                disabled={creatingInvite}
+                disabled={creatingInvite || selected.role !== "admin"}
                 type="button"
                 onClick={() => onCreateInvite(selected.id)}
                 className="ghost"
               >
                 {creatingInvite ? "Generating..." : "Generate invite"}
               </button>
+              {selected.role === "admin" ? (
+                <p className="tiny">
+                  You can generate a crew invite code and share it with your friends.
+                </p>
+              ) : null}
               {invitesByGroup[selected.id] ? (
                 <p className="tiny">
                   Code: <code>{invitesByGroup[selected.id]?.code}</code>
