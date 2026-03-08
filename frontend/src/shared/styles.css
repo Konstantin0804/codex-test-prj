@@ -1283,6 +1283,9 @@ button.ghost {
 
   .about-top-row input[type="date"] {
     line-height: 1.2;
+    display: block;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   .about-surf-row {

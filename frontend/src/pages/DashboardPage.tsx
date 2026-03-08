@@ -244,10 +244,13 @@ export function DashboardPage() {
     await dispatch(fetchInbox());
   };
 
-  const handleAcceptInvite = async (inviteId: number) => {
+  const handleAcceptInvite = async (inviteId: number, relatedGroupId?: number | null) => {
     await dispatch(acceptInvite(inviteId));
-    if (selectedGroupId) {
-      await dispatch(fetchSessions(selectedGroupId));
+    await dispatch(fetchGroups());
+    const nextGroupId = relatedGroupId ?? selectedGroupId;
+    if (nextGroupId) {
+      dispatch(selectGroup(nextGroupId));
+      await dispatch(fetchSessions(nextGroupId));
     }
     await dispatch(fetchInbox());
   };

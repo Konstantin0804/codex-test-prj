@@ -7,7 +7,7 @@ interface Props {
   acceptingInviteIds: number[];
   decliningInviteIds: number[];
   onRefresh: () => Promise<void>;
-  onAcceptInvite: (inviteId: number) => Promise<void>;
+  onAcceptInvite: (inviteId: number, relatedGroupId?: number | null) => Promise<void>;
   onDeclineInvite: (inviteId: number) => Promise<void>;
   onAcceptCrewInvite: (inviteId: number) => Promise<void>;
   onDeclineCrewInvite: (inviteId: number) => Promise<void>;
@@ -146,7 +146,9 @@ export function InboxPanel({
               {item.item_type === "session_invite" && item.related_invite_id && item.action_required ? (
                 <>
                   <button
-                    onClick={() => onAcceptInvite(item.related_invite_id as number)}
+                    onClick={() =>
+                      onAcceptInvite(item.related_invite_id as number, item.related_group_id)
+                    }
                     disabled={acceptingInviteIds.includes(item.related_invite_id as number)}
                   >
                     {acceptingInviteIds.includes(item.related_invite_id as number)

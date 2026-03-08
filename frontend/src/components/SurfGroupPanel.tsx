@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import type { SurfGroup, SurfInvite } from "../features/surf/types";
 
 interface Props {
@@ -31,18 +31,12 @@ export function SurfGroupPanel({
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const [crewOpen, setCrewOpen] = useState(true);
-  const [createOpen, setCreateOpen] = useState(groups.length === 0);
+  const [crewOpen, setCrewOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const selected = groups.find((group) => group.id === selectedGroupId) ?? null;
   const groupNameValid = groupName.trim().length >= 2;
   const inviteCodeValid = inviteCode.trim().length >= 8;
-
-  useEffect(() => {
-    if (groups.length === 0) {
-      setCreateOpen(true);
-    }
-  }, [groups.length]);
 
   const submitGroup = async (event: FormEvent) => {
     event.preventDefault();
@@ -79,58 +73,40 @@ export function SurfGroupPanel({
           </span>
         </button>
       </div>
+      {!crewOpen ? (
+        <p className="tiny">
+          {selected ? `Selected crew: ${selected.name}` : "No crew selected yet."}
+        </p>
+      ) : null}
       {!crewOpen ? null : (
         <>
-          {groups.length === 0 ? (
-            <form onSubmit={submitGroup} className="stack-form">
-              <label>
-                New Group Name *
-                <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
-              </label>
-              {groupName.trim().length > 0 && !groupNameValid ? (
-                <p className="tiny error-text">Minimum 2 characters.</p>
-              ) : null}
-              <label>
-                Description
-                <textarea
-                  value={groupDescription}
-                  onChange={(event) => setGroupDescription(event.target.value)}
-                  placeholder="Weekend dawn patrol team"
-                />
-              </label>
-              <button type="submit" disabled={creatingGroup || !groupNameValid}>
-                {creatingGroup ? "Creating..." : "Create group"}
-              </button>
-            </form>
-          ) : (
-            <div className="stack-form">
-              <button className="ghost" type="button" onClick={() => setCreateOpen((value) => !value)}>
-                {createOpen ? "Hide create form" : "Create another group"}
-              </button>
-              {createOpen ? (
-                <form onSubmit={submitGroup} className="stack-form">
-                  <label>
-                    New Group Name *
-                    <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
-                  </label>
-                  {groupName.trim().length > 0 && !groupNameValid ? (
-                    <p className="tiny error-text">Minimum 2 characters.</p>
-                  ) : null}
-                  <label>
-                    Description
-                    <textarea
-                      value={groupDescription}
-                      onChange={(event) => setGroupDescription(event.target.value)}
-                      placeholder="Weekend dawn patrol team"
-                    />
-                  </label>
-                  <button type="submit" disabled={creatingGroup || !groupNameValid}>
-                    {creatingGroup ? "Creating..." : "Create group"}
-                  </button>
-                </form>
-              ) : null}
-            </div>
-          )}
+          <div className="stack-form">
+            <button className="ghost" type="button" onClick={() => setCreateOpen((value) => !value)}>
+              {createOpen ? "Hide create form" : "Show create form"}
+            </button>
+            {createOpen ? (
+              <form onSubmit={submitGroup} className="stack-form">
+                <label>
+                  New Group Name *
+                  <input value={groupName} onChange={(event) => setGroupName(event.target.value)} />
+                </label>
+                {groupName.trim().length > 0 && !groupNameValid ? (
+                  <p className="tiny error-text">Minimum 2 characters.</p>
+                ) : null}
+                <label>
+                  Description
+                  <textarea
+                    value={groupDescription}
+                    onChange={(event) => setGroupDescription(event.target.value)}
+                    placeholder="Weekend dawn patrol team"
+                  />
+                </label>
+                <button type="submit" disabled={creatingGroup || !groupNameValid}>
+                  {creatingGroup ? "Creating..." : "Create group"}
+                </button>
+              </form>
+            ) : null}
+          </div>
 
           <form onSubmit={submitJoin} className="stack-form">
             <label>
