@@ -74,9 +74,13 @@ api.interceptors.response.use(
         Authorization: `Bearer ${refreshed.access_token}`
       };
       return await api(originalRequest);
-    } catch {
-      clearAuthToken();
-      notifyAuthRequired();
+    } catch (refreshError: any) {
+      const refreshStatus = refreshError?.response?.status;
+      // Only force re-auth when refresh token is definitely invalid/expired.
+      if (refreshStatus === 401 || refreshStatus === 403) {
+        clearAuthToken();
+        notifyAuthRequired();
+      }
       return Promise.reject(error);
     } finally {
       refreshPromise = null;

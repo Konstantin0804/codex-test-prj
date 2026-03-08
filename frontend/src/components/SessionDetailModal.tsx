@@ -18,6 +18,14 @@ interface SessionDetail {
   is_completed: boolean;
   average_rating: number | null;
   rating_count: number;
+  forecast_snapshot: {
+    wave_height_m: number | null;
+    wind_speed_kmh: number | null;
+    wind_direction_cardinal: string | null;
+    water_temperature_c: number | null;
+    tide_level: string | null;
+    tide_trend: string | null;
+  } | null;
   participants: string[];
   invites: {
     id: number;
@@ -88,6 +96,29 @@ export function SessionDetailModal({ sessionId, currentUsername, onClose, onChan
     stars: null,
     comment: ""
   });
+
+  const windArrow = (cardinal: string | null) => {
+    switch ((cardinal ?? "").toUpperCase()) {
+      case "N":
+        return "↓";
+      case "NE":
+        return "↙";
+      case "E":
+        return "←";
+      case "SE":
+        return "↖";
+      case "S":
+        return "↑";
+      case "SW":
+        return "↗";
+      case "W":
+        return "→";
+      case "NW":
+        return "↘";
+      default:
+        return "•";
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -252,7 +283,7 @@ export function SessionDetailModal({ sessionId, currentUsername, onClose, onChan
   return (
     <div className="modal-backdrop">
       <div className="modal-wrap">
-        <section className="card profile-panel">
+        <section className="card profile-panel session-workspace-panel">
           <div className="profile-head">
             <h2>Session</h2>
             <button className="ghost" type="button" onClick={onClose}>
@@ -283,10 +314,33 @@ export function SessionDetailModal({ sessionId, currentUsername, onClose, onChan
                   <input type="time" value={editTime} disabled={!canManage} onChange={(e) => setEditTime(e.target.value)} />
                 </label>
               </div>
-              <label>
-                Forecast note
-                <textarea value={editForecast} disabled={!canManage} onChange={(e) => setEditForecast(e.target.value)} />
-              </label>
+              <div className="session-forecast-row">
+                <div className="session-forecast-box">
+                  <p className="tiny"><strong>Open-Meteo snapshot</strong></p>
+                  {detail.forecast_snapshot ? (
+                    <div className="forecast-inline">
+                      <span className="forecast-pill">
+                        🌊 {detail.forecast_snapshot.wave_height_m !== null ? `${detail.forecast_snapshot.wave_height_m.toFixed(1)} m` : "n/a"}
+                      </span>
+                      <span className="forecast-pill">
+                        💨 {detail.forecast_snapshot.wind_speed_kmh !== null ? `${Math.round(detail.forecast_snapshot.wind_speed_kmh)} km/h ${windArrow(detail.forecast_snapshot.wind_direction_cardinal)} ${detail.forecast_snapshot.wind_direction_cardinal ?? "N/A"}` : "n/a"}
+                      </span>
+                      <span className="forecast-pill">
+                        🌡️ {detail.forecast_snapshot.water_temperature_c !== null ? `${detail.forecast_snapshot.water_temperature_c.toFixed(1)}°C` : "n/a"}
+                      </span>
+                      <span className="forecast-pill">
+                        🌊⬍ {detail.forecast_snapshot.tide_level ?? "n/a"} ({detail.forecast_snapshot.tide_trend ?? "n/a"})
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="tiny">No snapshot saved.</p>
+                  )}
+                </div>
+                <label className="session-forecast-note">
+                  Forecast note
+                  <textarea value={editForecast} disabled={!canManage} onChange={(e) => setEditForecast(e.target.value)} />
+                </label>
+              </div>
               <label>
                 Logistics
                 <textarea value={editLogistics} disabled={!canManage} onChange={(e) => setEditLogistics(e.target.value)} />
@@ -325,6 +379,28 @@ export function SessionDetailModal({ sessionId, currentUsername, onClose, onChan
                   </button>
                 </div>
               ) : null}
+
+              <div className="report-area">
+                <h4>Invites</h4>
+                <div className="report-list">
+                  {detail.invites.map((invite) => (
+                    <div key={invite.id} className="report-item">
+                      <p>
+                        <strong>
+                          {invite.invited_username
+                            ? `@${invite.invited_username}`
+                            : invite.invited_telegram_username
+                              ? `@${invite.invited_telegram_username}`
+                              : "Unknown"}
+                        </strong>
+                        {" · "}
+                        {invite.status}
+                      </p>
+                    </div>
+                  ))}
+                  {detail.invites.length === 0 ? <p className="tiny">No invites yet.</p> : null}
+                </div>
+              </div>
 
               <div className="report-area">
                 <h4>Reports</h4>
@@ -375,6 +451,22 @@ export function SessionDetailModal({ sessionId, currentUsername, onClose, onChan
                   </label>
                   <input
                     id={`modal-session-photo-${sessionId}`}
+                    className="avatar-upload-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                    disabled={busy}
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      await uploadPhoto(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                  <label className="avatar-upload-btn" htmlFor={`modal-forecast-photo-${sessionId}`}>
+                    {busy ? "Uploading..." : "Upload forecast screenshot"}
+                  </label>
+                  <input
+                    id={`modal-forecast-photo-${sessionId}`}
                     className="avatar-upload-input"
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/heic,image/heif"

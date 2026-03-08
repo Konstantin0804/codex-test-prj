@@ -51,6 +51,7 @@ export function DashboardPage() {
   const [sessionDetailId, setSessionDetailId] = useState<number | null>(null);
   const [inboxDetailsOpen, setInboxDetailsOpen] = useState(false);
   const [checkingDots, setCheckingDots] = useState(1);
+  const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
   const {
     groups,
     friends,
@@ -131,6 +132,16 @@ export function DashboardPage() {
     }, 420);
     return () => window.clearInterval(timer);
   }, [token, sessionChecked]);
+
+  useEffect(() => {
+    const onAuthRequired = () => {
+      if (token) {
+        setSessionExpiredOpen(true);
+      }
+    };
+    window.addEventListener("pulseboard:auth-required", onAuthRequired);
+    return () => window.removeEventListener("pulseboard:auth-required", onAuthRequired);
+  }, [token]);
 
   if (!token && !sessionChecked) {
     return (
@@ -344,6 +355,29 @@ export function DashboardPage() {
         <div className="modal-backdrop">
           <div className="modal-wrap">
             <ProfilePanel onClose={() => setAboutOpen(false)} onAvatarChange={setAvatarUrl} />
+          </div>
+        </div>
+      ) : null}
+      {sessionExpiredOpen ? (
+        <div className="modal-backdrop">
+          <div className="modal-wrap">
+            <section className="card profile-panel">
+              <div className="profile-head">
+                <h2>Session expired</h2>
+              </div>
+              <p className="tiny">
+                Your login session has expired. Please continue to sign in again.
+              </p>
+              <button
+                onClick={async () => {
+                  setSessionExpiredOpen(false);
+                  await dispatch(logoutSession());
+                  dispatch(logout());
+                }}
+              >
+                Continue
+              </button>
+            </section>
           </div>
         </div>
       ) : null}

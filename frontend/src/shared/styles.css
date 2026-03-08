@@ -1052,6 +1052,36 @@ button.danger-btn {
   gap: 0.55rem;
 }
 
+.session-workspace-panel {
+  padding: 0.8rem;
+}
+
+.session-workspace-panel .profile-form {
+  gap: 0.45rem;
+}
+
+.session-workspace-panel textarea {
+  min-height: 68px;
+}
+
+.session-forecast-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.session-forecast-box {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.45rem;
+  background: #fff;
+}
+
+.session-forecast-note {
+  min-width: 0;
+}
+
 .about-surf-row {
   align-items: end;
 }
@@ -1249,6 +1279,10 @@ button.danger-btn {
   }
 
   .forecast-row {
+    grid-template-columns: 1fr;
+  }
+
+  .session-forecast-row {
     grid-template-columns: 1fr;
   }
 

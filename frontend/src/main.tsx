@@ -2,16 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { store } from "./app/store";
-import { applySession, logout, restoreSession } from "./features/auth/authSlice";
+import { applySession, restoreSession } from "./features/auth/authSlice";
 import { DashboardPage } from "./pages/DashboardPage";
 import "leaflet/dist/leaflet.css";
 import "./shared/styles.css";
 
 void store.dispatch(restoreSession());
-
-window.addEventListener("pulseboard:auth-required", () => {
-  store.dispatch(logout());
-});
 
 window.addEventListener("pulseboard:auth-refreshed", (event) => {
   const custom = event as CustomEvent<{ access_token: string; username: string }>;
