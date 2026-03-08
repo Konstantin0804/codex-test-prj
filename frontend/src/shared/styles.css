@@ -1272,17 +1272,26 @@ button.ghost {
   }
 
   .about-top-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 0.6rem;
+    display: flex;
+    gap: 0.6rem;
   }
 
   .about-top-row > label {
+    flex: 1 1 0;
     min-width: 0;
+    overflow: hidden;
   }
 
   .about-top-row input {
-    min-width: 0;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 48px;
+    box-sizing: border-box;
+  }
+
+  .about-top-row input[type="date"] {
+    line-height: 1.2;
   }
 
   .about-surf-row {
