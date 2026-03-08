@@ -39,6 +39,10 @@ interface SpotForecast {
   summary: string;
 }
 
+interface ProfileSummary {
+  favorite_spots: string[];
+}
+
 function windArrow(cardinal: string): string {
   const key = (cardinal || "").toUpperCase();
   if (key === "N") return "⬆️";
@@ -105,6 +109,7 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
   const [forecast, setForecast] = useState<SpotForecast | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastError, setForecastError] = useState<string | null>(null);
+  const [favoriteSpots, setFavoriteSpots] = useState<string[]>([]);
 
   const typedUsernames = inviteUsersRaw
     .split(",")
@@ -118,13 +123,14 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
   const previewUsers = finalInviteUsernames.map((username) => `@${username}`);
   const previewTelegrams = typedTelegrams.map((username) => `@${username}`);
   const selectedSpot = findSurfSpotByName(spotName);
+  const favoriteSpotsSet = useMemo(() => new Set(favoriteSpots), [favoriteSpots]);
   const isSpotValid = Boolean(selectedSpot);
   const isDateValid = Boolean(sessionDate);
   const isTimeValid = Boolean(meetingTime);
   const isSubmitValid = isSpotValid && isDateValid && isTimeValid;
   const spotSuggestions = useMemo(() => {
     const query = spotName.trim().toLowerCase();
-    return SURF_SPOTS.filter((spot) => {
+    const filtered = SURF_SPOTS.filter((spot) => {
       if (!query) {
         return true;
       }
@@ -132,7 +138,35 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
         spot.name.toLowerCase().includes(query) || spot.region.toLowerCase().includes(query)
       );
     });
-  }, [spotName]);
+    return filtered.sort((a, b) => {
+      const aFav = favoriteSpotsSet.has(a.name) ? 1 : 0;
+      const bFav = favoriteSpotsSet.has(b.name) ? 1 : 0;
+      if (aFav !== bFav) {
+        return bFav - aFav;
+      }
+      return 0;
+    });
+  }, [spotName, favoriteSpotsSet]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadFavoriteSpots = async () => {
+      try {
+        const response = await api.get<ProfileSummary>("/auth/profile");
+        if (!cancelled) {
+          setFavoriteSpots(response.data.favorite_spots ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setFavoriteSpots([]);
+        }
+      }
+    };
+    void loadFavoriteSpots();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const targetDateTime = useMemo(() => {
     if (!sessionDate) {
@@ -273,7 +307,10 @@ export function SurfSessionComposer({ disabled, friends, loadingFriends, onSubmi
                     className={`spot-option ${spot.name === selectedSpot?.name ? "active" : ""}`}
                     onClick={() => setSpotName(spot.name)}
                   >
-                    <span>{spot.name}</span>
+                    <span>
+                      {spot.name}
+                      {favoriteSpotsSet.has(spot.name) ? " ♡" : ""}
+                    </span>
                     <span className="spot-option-meta">
                       <em>{spot.region}</em>
                     </span>
