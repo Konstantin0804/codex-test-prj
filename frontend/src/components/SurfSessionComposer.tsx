@@ -61,6 +61,8 @@ const FORECAST_CACHE_TTL_MS = 20 * 60 * 1000;
 
 function defaultMeetingTimePlusHour(): string {
   const value = new Date();
+  const roundedMinutes = value.getMinutes() < 30 ? 0 : 30;
+  value.setMinutes(roundedMinutes, 0, 0);
   value.setHours(value.getHours() + 1);
   const hours = String(value.getHours()).padStart(2, "0");
   const minutes = String(value.getMinutes()).padStart(2, "0");
