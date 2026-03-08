@@ -20,6 +20,7 @@ from app.models.surf import (
     InviteStatus,
     SessionInvite,
     SessionInviteStatus,
+    SessionComment,
     SessionFeedback,
     SessionPhoto,
     SessionReport,
@@ -1073,6 +1074,35 @@ def set_rsvp(db: Session, session_id: int, user: User, status_value, transport_n
     db.commit()
     db.refresh(rsvp)
     return rsvp
+
+
+def create_session_comment(db: Session, session_id: int, user: User, body: str) -> SessionComment:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+    text = body.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Comment body is required")
+    row = SessionComment(session_id=session_id, user_id=user.id, body=text)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def list_session_comments(db: Session, session_id: int, user: User) -> list[tuple[SessionComment, User]]:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_membership(db, session.group_id, user)
+    stmt = (
+        select(SessionComment, User)
+        .join(User, User.id == SessionComment.user_id)
+        .where(SessionComment.session_id == session_id)
+        .order_by(SessionComment.created_at.desc())
+    )
+    return list(db.execute(stmt).all())
 
 
 def create_report(

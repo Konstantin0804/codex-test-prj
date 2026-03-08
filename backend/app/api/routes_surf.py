@@ -30,6 +30,8 @@ from app.schemas.surf import (
     JoinInvitePayload,
     RSVPUpdate,
     SessionCreate,
+    SessionCommentCreate,
+    SessionCommentRead,
     SessionFeedbackCreate,
     SessionFeedbackRead,
     SessionInviteCreate,
@@ -57,6 +59,7 @@ from app.services.surf_service import (
     create_report,
     create_session_invite,
     create_session,
+    create_session_comment,
     upsert_session_feedback,
     get_group_detail,
     get_session_detail,
@@ -68,6 +71,7 @@ from app.services.surf_service import (
     list_inbox_items,
     list_groups,
     list_reports,
+    list_session_comments,
     list_session_photos,
     list_session_feedback,
     list_sessions,
@@ -748,6 +752,42 @@ def get_session_feedback_route(
             updated_at=feedback.updated_at,
         )
         for feedback, user in rows
+    ]
+
+
+@router.post("/sessions/{session_id}/comments", response_model=SessionCommentRead)
+def post_session_comment(
+    session_id: int,
+    payload: SessionCommentCreate,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionCommentRead:
+    row = create_session_comment(db, session_id, current_user, payload.body)
+    return SessionCommentRead(
+        id=row.id,
+        session_id=row.session_id,
+        username=current_user.username,
+        body=row.body,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/sessions/{session_id}/comments", response_model=list[SessionCommentRead])
+def get_session_comments_route(
+    session_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> list[SessionCommentRead]:
+    rows = list_session_comments(db, session_id, current_user)
+    return [
+        SessionCommentRead(
+            id=comment.id,
+            session_id=comment.session_id,
+            username=user.username,
+            body=comment.body,
+            created_at=comment.created_at,
+        )
+        for comment, user in rows
     ]
 
 

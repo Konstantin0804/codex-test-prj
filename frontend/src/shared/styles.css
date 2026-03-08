@@ -318,6 +318,12 @@ body {
   gap: 0.75rem;
 }
 
+.session-column-scroll {
+  max-height: 72vh;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
 .calendar-split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1178,6 +1184,12 @@ button.ghost {
     grid-template-columns: 1fr;
   }
 
+  .session-column-scroll {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
   .spot-picker-card {
     min-height: 250px;
     max-height: 250px;
@@ -1286,6 +1298,7 @@ button.ghost {
     display: block;
     -webkit-appearance: none;
     appearance: none;
+    text-align: left;
   }
 
   .about-surf-row {

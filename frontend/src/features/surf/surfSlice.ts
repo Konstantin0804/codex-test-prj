@@ -5,6 +5,7 @@ import type {
   GroupCreatePayload,
   InboxItem,
   ReportCreatePayload,
+  SessionComment,
   SessionFeedback,
   SessionPhoto,
   SessionInvite,
@@ -24,6 +25,7 @@ const initialState: SurfState = {
   reportsBySession: {},
   feedbackBySession: {},
   photosBySession: {},
+  commentsBySession: {},
   invitesBySession: {},
   invitesByGroup: {},
   inbox: [],
@@ -45,6 +47,8 @@ const initialState: SurfState = {
   completingSessionIds: [],
   photoLoadingIds: [],
   photoUploadingIds: [],
+  commentLoadingIds: [],
+  commentPostingIds: [],
   error: null
 };
 
@@ -181,6 +185,22 @@ export const fetchSessionPhotos = createAsyncThunk(
   }
 );
 
+export const fetchSessionComments = createAsyncThunk(
+  "surf/fetchSessionComments",
+  async (sessionId: number) => {
+    const response = await api.get<SessionComment[]>(`/surf/sessions/${sessionId}/comments`);
+    return { sessionId, comments: response.data };
+  }
+);
+
+export const postSessionComment = createAsyncThunk(
+  "surf/postSessionComment",
+  async ({ sessionId, body }: { sessionId: number; body: string }) => {
+    const response = await api.post<SessionComment>(`/surf/sessions/${sessionId}/comments`, { body });
+    return response.data;
+  }
+);
+
 export const uploadSessionPhoto = createAsyncThunk(
   "surf/uploadSessionPhoto",
   async ({ sessionId, file }: { sessionId: number; file: File }) => {
@@ -217,7 +237,8 @@ const surfSlice = createSlice({
         state.loadingGroups = false;
         state.groups = action.payload;
         if (action.payload.length > 0 && !state.selectedGroupId) {
-          state.selectedGroupId = action.payload[0].id;
+          const adminGroup = action.payload.find((group) => group.role === "admin");
+          state.selectedGroupId = adminGroup?.id ?? action.payload[0].id;
         }
         if (
           state.selectedGroupId &&
@@ -468,6 +489,31 @@ const surfSlice = createSlice({
           (id) => id !== action.meta.arg.sessionId
         );
         state.error = action.error.message ?? "Failed to upload photo";
+      })
+      .addCase(fetchSessionComments.pending, (state, action) => {
+        state.commentLoadingIds.push(action.meta.arg);
+      })
+      .addCase(fetchSessionComments.fulfilled, (state, action) => {
+        state.commentLoadingIds = state.commentLoadingIds.filter((id) => id !== action.payload.sessionId);
+        state.commentsBySession[action.payload.sessionId] = action.payload.comments;
+      })
+      .addCase(fetchSessionComments.rejected, (state, action) => {
+        state.commentLoadingIds = state.commentLoadingIds.filter((id) => id !== action.meta.arg);
+        state.error = action.error.message ?? "Failed to load comments";
+      })
+      .addCase(postSessionComment.pending, (state, action) => {
+        state.commentPostingIds.push(action.meta.arg.sessionId);
+      })
+      .addCase(postSessionComment.fulfilled, (state, action) => {
+        state.commentPostingIds = state.commentPostingIds.filter((id) => id !== action.payload.session_id);
+        state.commentsBySession[action.payload.session_id] = [
+          action.payload,
+          ...(state.commentsBySession[action.payload.session_id] ?? [])
+        ];
+      })
+      .addCase(postSessionComment.rejected, (state, action) => {
+        state.commentPostingIds = state.commentPostingIds.filter((id) => id !== action.meta.arg.sessionId);
+        state.error = action.error.message ?? "Failed to post comment";
       });
   }
 });

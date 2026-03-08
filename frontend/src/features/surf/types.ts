@@ -88,6 +88,14 @@ export interface SessionPhoto {
   created_at: string;
 }
 
+export interface SessionComment {
+  id: number;
+  session_id: number;
+  username: string;
+  body: string;
+  created_at: string;
+}
+
 export interface SessionInvite {
   id: number;
   session_id: number;
@@ -147,6 +155,7 @@ export interface SurfState {
   reportsBySession: Record<number, SessionReport[]>;
   feedbackBySession: Record<number, SessionFeedback[]>;
   photosBySession: Record<number, SessionPhoto[]>;
+  commentsBySession: Record<number, SessionComment[]>;
   invitesBySession: Record<number, SessionInvite[]>;
   invitesByGroup: Record<number, SurfInvite | null>;
   inbox: InboxItem[];
@@ -168,5 +177,7 @@ export interface SurfState {
   completingSessionIds: number[];
   photoLoadingIds: number[];
   photoUploadingIds: number[];
+  commentLoadingIds: number[];
+  commentPostingIds: number[];
   error: string | null;
 }

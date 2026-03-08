@@ -23,6 +23,7 @@ import {
   completeSession,
   fetchFriends,
   fetchSessionFeedback,
+  fetchSessionComments,
   fetchInbox,
   fetchGroups,
   fetchReports,
@@ -32,6 +33,7 @@ import {
   markInboxRead,
   selectGroup,
   sendSessionInvite,
+  postSessionComment,
   uploadSessionPhoto,
   upsertSessionFeedback,
   setRsvp
@@ -57,6 +59,7 @@ export function DashboardPage() {
     reportsBySession,
     feedbackBySession,
     photosBySession,
+    commentsBySession,
     invitesByGroup,
     inbox,
     loadingGroups,
@@ -77,6 +80,8 @@ export function DashboardPage() {
     completingSessionIds,
     photoLoadingIds,
     photoUploadingIds,
+    commentLoadingIds,
+    commentPostingIds,
     error
   } = useAppSelector((state) => state.surf);
 
@@ -227,6 +232,14 @@ export function DashboardPage() {
 
   const handleUploadPhoto = async (sessionId: number, file: File) => {
     await dispatch(uploadSessionPhoto({ sessionId, file }));
+  };
+
+  const handleLoadComments = async (sessionId: number) => {
+    await dispatch(fetchSessionComments(sessionId));
+  };
+
+  const handlePostComment = async (sessionId: number, body: string) => {
+    await dispatch(postSessionComment({ sessionId, body }));
   };
 
   const handleSendInvite = async (
@@ -454,12 +467,15 @@ export function DashboardPage() {
                   reportsBySession={reportsBySession}
                   feedbackBySession={feedbackBySession}
                   photosBySession={photosBySession}
+                  commentsBySession={commentsBySession}
                   sendingInvite={sendingSessionInvite}
                   feedbackLoadingIds={feedbackLoadingIds}
                   feedbackSavingIds={feedbackSavingIds}
                   completingSessionIds={completingSessionIds}
                   photoLoadingIds={photoLoadingIds}
                   photoUploadingIds={photoUploadingIds}
+                  commentLoadingIds={commentLoadingIds}
+                  commentPostingIds={commentPostingIds}
                   onSendInvite={handleSendInvite}
                   onRsvp={handleRsvp}
                   onCompleteSession={handleCompleteSession}
@@ -469,6 +485,8 @@ export function DashboardPage() {
                   onSubmitFeedback={handleSubmitFeedback}
                   onLoadPhotos={handleLoadPhotos}
                   onUploadPhoto={handleUploadPhoto}
+                  onLoadComments={handleLoadComments}
+                  onPostComment={handlePostComment}
                 />
               </>
             )}

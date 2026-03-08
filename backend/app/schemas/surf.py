@@ -187,6 +187,18 @@ class SessionFeedbackRead(BaseModel):
     updated_at: datetime
 
 
+class SessionCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=800)
+
+
+class SessionCommentRead(BaseModel):
+    id: int
+    session_id: int
+    username: str
+    body: str
+    created_at: datetime
+
+
 class SessionPhotoRead(BaseModel):
     id: int
     session_id: int

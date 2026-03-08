@@ -1,5 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import type { SessionFeedback, SessionPhoto, SessionReport, SurfSession } from "../features/surf/types";
+import type {
+  SessionComment,
+  SessionFeedback,
+  SessionPhoto,
+  SessionReport,
+  SurfSession
+} from "../features/surf/types";
 
 interface Props {
   currentUsername: string;
@@ -13,9 +19,12 @@ interface Props {
   reportsBySession: Record<number, SessionReport[]>;
   feedbackBySession: Record<number, SessionFeedback[]>;
   photosBySession: Record<number, SessionPhoto[]>;
+  commentsBySession: Record<number, SessionComment[]>;
   sendingInvite: boolean;
   photoLoadingIds: number[];
   photoUploadingIds: number[];
+  commentLoadingIds: number[];
+  commentPostingIds: number[];
   onSendInvite: (sessionId: number, username?: string, telegramUsername?: string) => Promise<void>;
   onRsvp: (sessionId: number, status: "going" | "maybe" | "not_going") => Promise<void>;
   onCompleteSession: (sessionId: number) => Promise<void>;
@@ -28,6 +37,8 @@ interface Props {
   onSubmitFeedback: (sessionId: number, stars: number | null, comment: string) => Promise<void>;
   onLoadPhotos: (sessionId: number) => Promise<void>;
   onUploadPhoto: (sessionId: number, file: File) => Promise<void>;
+  onLoadComments: (sessionId: number) => Promise<void>;
+  onPostComment: (sessionId: number, body: string) => Promise<void>;
 }
 
 export function SurfCalendar({
@@ -42,9 +53,12 @@ export function SurfCalendar({
   reportsBySession,
   feedbackBySession,
   photosBySession,
+  commentsBySession,
   sendingInvite,
   photoLoadingIds,
   photoUploadingIds,
+  commentLoadingIds,
+  commentPostingIds,
   onSendInvite,
   onRsvp,
   onCompleteSession,
@@ -53,7 +67,9 @@ export function SurfCalendar({
   onLoadFeedback,
   onSubmitFeedback,
   onLoadPhotos,
-  onUploadPhoto
+  onUploadPhoto,
+  onLoadComments,
+  onPostComment
 }: Props) {
   const windArrow = (cardinal: string | null) => {
     switch ((cardinal ?? "").toUpperCase()) {
@@ -81,6 +97,7 @@ export function SurfCalendar({
   const [openReportFor, setOpenReportFor] = useState<number | null>(null);
   const [openFeedbackFor, setOpenFeedbackFor] = useState<number | null>(null);
   const [openPhotosFor, setOpenPhotosFor] = useState<number | null>(null);
+  const [openCommentsFor, setOpenCommentsFor] = useState<number | null>(null);
   const [formState, setFormState] = useState({ wave_score: 7, crowd_score: 6, wind_score: 7, note: "" });
   const [feedbackForm, setFeedbackForm] = useState<{ stars: number | null; comment: string }>({
     stars: null,
@@ -89,6 +106,7 @@ export function SurfCalendar({
   const [feedbackEditedFor, setFeedbackEditedFor] = useState<number | null>(null);
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteTelegram, setInviteTelegram] = useState("");
+  const [commentInput, setCommentInput] = useState("");
 
   useEffect(() => {
     if (openFeedbackFor === null || feedbackEditedFor === openFeedbackFor) {
@@ -103,18 +121,26 @@ export function SurfCalendar({
     });
   }, [openFeedbackFor, feedbackBySession, currentUsername, feedbackEditedFor]);
 
+  const sortSessionsNewestFirst = (items: SurfSession[]) =>
+    [...items].sort((a, b) =>
+      `${b.session_date}T${b.meeting_time ?? "00:00:00"}`.localeCompare(
+        `${a.session_date}T${a.meeting_time ?? "00:00:00"}`
+      )
+    );
+
   const groupByDate = (items: SurfSession[]) => {
+    const sorted = sortSessionsNewestFirst(items);
     const map: Record<string, SurfSession[]> = {};
-    for (const session of items) {
+    for (const session of sorted) {
       map[session.session_date] = map[session.session_date] ?? [];
       map[session.session_date].push(session);
     }
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+    return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
   };
 
   const completedGroups = useMemo(() => {
     const completed = sessions.filter((session) => session.is_completed);
-    return groupByDate(completed).reverse();
+    return groupByDate(completed);
   }, [sessions]);
 
   const plannedGroups = useMemo(() => {
@@ -160,27 +186,31 @@ export function SurfCalendar({
                 <p>{session.forecast_note || "Forecast note not added"}</p>
                 <p>{session.logistics_note || "Logistics note not added"}</p>
                 <div className="chip-row">
-                  <button
-                    className={session.my_rsvp === "going" ? "active-chip" : "ghost"}
-                    disabled={rsvpLoadingIds.includes(session.id)}
-                    onClick={() => onRsvp(session.id, "going")}
-                  >
-                    {rsvpLoadingIds.includes(session.id) ? "Saving..." : "Going"}
-                  </button>
-                  <button
-                    className={session.my_rsvp === "maybe" ? "active-chip" : "ghost"}
-                    disabled={rsvpLoadingIds.includes(session.id)}
-                    onClick={() => onRsvp(session.id, "maybe")}
-                  >
-                    Maybe
-                  </button>
-                  <button
-                    className={session.my_rsvp === "not_going" ? "active-chip" : "ghost"}
-                    disabled={rsvpLoadingIds.includes(session.id)}
-                    onClick={() => onRsvp(session.id, "not_going")}
-                  >
-                    Not Going
-                  </button>
+                  {!session.is_completed ? (
+                    <>
+                      <button
+                        className={session.my_rsvp === "going" ? "active-chip" : "ghost"}
+                        disabled={rsvpLoadingIds.includes(session.id)}
+                        onClick={() => onRsvp(session.id, "going")}
+                      >
+                        {rsvpLoadingIds.includes(session.id) ? "Saving..." : "Going"}
+                      </button>
+                      <button
+                        className={session.my_rsvp === "maybe" ? "active-chip" : "ghost"}
+                        disabled={rsvpLoadingIds.includes(session.id)}
+                        onClick={() => onRsvp(session.id, "maybe")}
+                      >
+                        Maybe
+                      </button>
+                      <button
+                        className={session.my_rsvp === "not_going" ? "active-chip" : "ghost"}
+                        disabled={rsvpLoadingIds.includes(session.id)}
+                        onClick={() => onRsvp(session.id, "not_going")}
+                      >
+                        Not Going
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     className="ghost"
                     onClick={async () => {
@@ -236,6 +266,19 @@ export function SurfCalendar({
                     }}
                   >
                     Photos
+                  </button>
+                  <button
+                    className="ghost"
+                    onClick={async () => {
+                      const next = openCommentsFor === session.id ? null : session.id;
+                      setOpenCommentsFor(next);
+                      setCommentInput("");
+                      if (next !== null) {
+                        await onLoadComments(session.id);
+                      }
+                    }}
+                  >
+                    Comments
                   </button>
                 </div>
 
@@ -468,6 +511,48 @@ export function SurfCalendar({
                     </div>
                   </div>
                 ) : null}
+                {openCommentsFor === session.id ? (
+                  <div className="report-area">
+                    <form
+                      className="report-form"
+                      onSubmit={async (event) => {
+                        event.preventDefault();
+                        const body = commentInput.trim();
+                        if (!body) {
+                          return;
+                        }
+                        await onPostComment(session.id, body);
+                        setCommentInput("");
+                      }}
+                    >
+                      <label>
+                        Session comments
+                        <input
+                          value={commentInput}
+                          onChange={(event) => setCommentInput(event.target.value)}
+                          placeholder="Write a comment..."
+                        />
+                      </label>
+                      <button disabled={commentPostingIds.includes(session.id) || !commentInput.trim()} type="submit">
+                        {commentPostingIds.includes(session.id) ? "Sending..." : "Post comment"}
+                      </button>
+                    </form>
+                    {commentLoadingIds.includes(session.id) ? <p className="tiny">Loading comments...</p> : null}
+                    <div className="report-list">
+                      {(commentsBySession[session.id] ?? []).map((item) => (
+                        <div key={item.id} className="report-item">
+                          <p>
+                            <strong>@{item.username}</strong>
+                          </p>
+                          <p className="tiny">{item.body}</p>
+                        </div>
+                      ))}
+                      {(commentsBySession[session.id] ?? []).length === 0 && !commentLoadingIds.includes(session.id) ? (
+                        <p className="tiny">No comments yet.</p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
     </div>
   );
 
@@ -479,7 +564,7 @@ export function SurfCalendar({
     <section className="card day-block session-column">
       <h3>{title}</h3>
       {groups.length === 0 ? <p className="status">{emptyText}</p> : null}
-      <div className="calendar-wrap">
+      <div className="calendar-wrap session-column-scroll">
         {groups.map(([date, items]) => (
           <article className="card day-block" key={`${title}:${date}`}>
             <h3>{date}</h3>
