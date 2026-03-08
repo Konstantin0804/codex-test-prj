@@ -363,7 +363,17 @@ export function DashboardPage() {
         />
       ) : null}
       {sessionDetailId ? (
-        <SessionDetailModal sessionId={sessionDetailId} onClose={() => setSessionDetailId(null)} />
+        <SessionDetailModal
+          sessionId={sessionDetailId}
+          currentUsername={username ?? ""}
+          onClose={() => setSessionDetailId(null)}
+          onChanged={async () => {
+            if (selectedGroupId) {
+              await dispatch(fetchSessions(selectedGroupId));
+            }
+            await dispatch(fetchInbox());
+          }}
+        />
       ) : null}
       {profileModalUsername ? (
         <UserProfileModal
@@ -487,6 +497,7 @@ export function DashboardPage() {
                   onUploadPhoto={handleUploadPhoto}
                   onLoadComments={handleLoadComments}
                   onPostComment={handlePostComment}
+                  onOpenSession={(id) => setSessionDetailId(id)}
                 />
               </>
             )}

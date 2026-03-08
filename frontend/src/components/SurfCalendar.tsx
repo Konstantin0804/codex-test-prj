@@ -39,6 +39,7 @@ interface Props {
   onUploadPhoto: (sessionId: number, file: File) => Promise<void>;
   onLoadComments: (sessionId: number) => Promise<void>;
   onPostComment: (sessionId: number, body: string) => Promise<void>;
+  onOpenSession: (sessionId: number) => void;
 }
 
 export function SurfCalendar({
@@ -69,7 +70,8 @@ export function SurfCalendar({
   onLoadPhotos,
   onUploadPhoto,
   onLoadComments,
-  onPostComment
+  onPostComment,
+  onOpenSession
 }: Props) {
   const windArrow = (cardinal: string | null) => {
     switch ((cardinal ?? "").toUpperCase()) {
@@ -279,6 +281,9 @@ export function SurfCalendar({
                     }}
                   >
                     Comments
+                  </button>
+                  <button className="ghost" onClick={() => onOpenSession(session.id)}>
+                    Open
                   </button>
                 </div>
 

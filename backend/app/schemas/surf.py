@@ -112,6 +112,15 @@ class SessionCreate(BaseModel):
     logistics_note: str = ""
 
 
+class SessionUpdate(BaseModel):
+    spot_name: str | None = Field(default=None, min_length=2, max_length=140)
+    session_date: date | None = None
+    meeting_time: time | None = None
+    level: SessionLevel | None = None
+    forecast_note: str | None = None
+    logistics_note: str | None = None
+
+
 class SessionForecastSnapshotRead(BaseModel):
     provider: str | None = None
     target_time: str | None = None
@@ -244,6 +253,9 @@ class SessionDetailRead(BaseModel):
     logistics_note: str
     created_at: datetime
     created_by_username: str
+    current_user_role: GroupRole
+    can_manage: bool = False
+    my_rsvp: RSVPStatus | None = None
     is_completed: bool
     completed_at: datetime | None = None
     average_rating: float | None = None

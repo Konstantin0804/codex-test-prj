@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
@@ -715,6 +715,64 @@ def create_session(db: Session, group_id: int, payload: SessionCreate, user: Use
     db.commit()
     db.refresh(session)
     return session
+
+
+def update_session(
+    db: Session,
+    session_id: int,
+    user: User,
+    *,
+    spot_name: str | None = None,
+    session_date=None,
+    meeting_time=None,
+    level=None,
+    forecast_note: str | None = None,
+    logistics_note: str | None = None,
+) -> SurfSession:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_admin(db, session.group_id, user)
+
+    if spot_name is not None:
+        if spot_name not in SURF_SPOT_NAMES:
+            raise HTTPException(status_code=422, detail="Unknown surf spot. Select one from the list.")
+        session.spot_name = spot_name
+    if session_date is not None:
+        session.session_date = session_date
+    if meeting_time is not None:
+        session.meeting_time = meeting_time
+    if level is not None:
+        session.level = level
+    if forecast_note is not None:
+        session.forecast_note = forecast_note
+    if logistics_note is not None:
+        session.logistics_note = logistics_note
+
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def delete_session(db: Session, session_id: int, user: User) -> None:
+    session = db.get(SurfSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    require_admin(db, session.group_id, user)
+
+    invite_ids = [item.id for item in db.scalars(select(SessionInvite.id).where(SessionInvite.session_id == session_id)).all()]
+    if invite_ids:
+        db.execute(delete(InboxItem).where(InboxItem.related_invite_id.in_(invite_ids)))
+    db.execute(delete(InboxItem).where(InboxItem.related_session_id == session_id))
+    db.execute(delete(SessionComment).where(SessionComment.session_id == session_id))
+    db.execute(delete(SessionRSVP).where(SessionRSVP.session_id == session_id))
+    db.execute(delete(SessionReport).where(SessionReport.session_id == session_id))
+    db.execute(delete(SessionFeedback).where(SessionFeedback.session_id == session_id))
+    db.execute(delete(SessionPhoto).where(SessionPhoto.session_id == session_id))
+    db.execute(delete(SessionInvite).where(SessionInvite.session_id == session_id))
+    db.execute(delete(SurfSession).where(SurfSession.id == session_id))
+    db.commit()
 
 
 def list_sessions(db: Session, group_id: int, user: User) -> list[SurfSession]:

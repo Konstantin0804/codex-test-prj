@@ -864,6 +864,11 @@ button.ghost {
   color: var(--ink);
 }
 
+button.danger-btn {
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

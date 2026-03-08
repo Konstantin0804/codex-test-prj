@@ -30,6 +30,7 @@ from app.schemas.surf import (
     JoinInvitePayload,
     RSVPUpdate,
     SessionCreate,
+    SessionUpdate,
     SessionCommentCreate,
     SessionCommentRead,
     SessionFeedbackCreate,
@@ -59,6 +60,8 @@ from app.services.surf_service import (
     create_report,
     create_session_invite,
     create_session,
+    update_session,
+    delete_session,
     create_session_comment,
     upsert_session_feedback,
     get_group_detail,
@@ -76,6 +79,7 @@ from app.services.surf_service import (
     list_session_feedback,
     list_sessions,
     mark_inbox_read,
+    require_membership,
     my_rsvp_map,
     remove_group_member,
     resend_friend_request,
@@ -479,6 +483,8 @@ def get_session_detail_route(
 ) -> SessionDetailRead:
     session, owner, invites, photos = get_session_detail(db, session_id, current_user)
     avg, count = session_rating_summary_map(db, [session.id]).get(session.id, (None, 0))
+    membership = require_membership(db, session.group_id, current_user)
+    my_rsvp = my_rsvp_map(db, [session.id], current_user.id).get(session.id)
 
     participant_usernames = {owner.username}
     invite_rows: list[SessionInviteStatusRead] = []
@@ -520,6 +526,9 @@ def get_session_detail_route(
         logistics_note=session.logistics_note,
         created_at=session.created_at,
         created_by_username=owner.username,
+        current_user_role=membership.role,
+        can_manage=getattr(membership.role, "value", membership.role) == "admin",
+        my_rsvp=my_rsvp,
         is_completed=session.completed_at is not None,
         completed_at=session.completed_at,
         average_rating=avg,
@@ -585,6 +594,56 @@ def post_session(
         rating_count=count,
         forecast_snapshot=_session_forecast_snapshot(session),
     )
+
+
+@router.patch("/sessions/{session_id}", response_model=SessionRead)
+def patch_session(
+    session_id: int,
+    payload: SessionUpdate,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> SessionRead:
+    session = update_session(
+        db,
+        session_id,
+        current_user,
+        spot_name=payload.spot_name,
+        session_date=payload.session_date,
+        meeting_time=payload.meeting_time,
+        level=payload.level,
+        forecast_note=payload.forecast_note,
+        logistics_note=payload.logistics_note,
+    )
+    my_rsvp = my_rsvp_map(db, [session.id], current_user.id).get(session.id)
+    avg, count = session_rating_summary_map(db, [session.id]).get(session.id, (None, 0))
+    return SessionRead(
+        id=session.id,
+        group_id=session.group_id,
+        spot_name=session.spot_name,
+        session_date=session.session_date,
+        meeting_time=session.meeting_time,
+        level=session.level,
+        forecast_note=session.forecast_note,
+        logistics_note=session.logistics_note,
+        created_at=session.created_at,
+        my_rsvp=my_rsvp,
+        is_completed=session.completed_at is not None,
+        completed_at=session.completed_at,
+        can_complete=session.created_by == current_user.id,
+        average_rating=avg,
+        rating_count=count,
+        forecast_snapshot=_session_forecast_snapshot(session),
+    )
+
+
+@router.delete("/sessions/{session_id}")
+def delete_session_route(
+    session_id: int,
+    db: Session = Depends(get_db_dep),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    delete_session(db, session_id, current_user)
+    return {"status": "deleted"}
 
 
 @router.get("/groups/{group_id}/sessions", response_model=list[SessionRead])
